@@ -1,0 +1,33 @@
+
+font.family: sans-serif
+font.serif: Computer Modern Serif
+font.sans-serif: Arial
+font.size: 16 
+font.weight: 500
+font.variant: normal
+
+axes.labelweight: normal
+axes.linewidth: 1
+
+xtick.color: k
+xtick.direction: in
+xtick.top: True
+xtick.major.pad:8
+xtick.major.size:8
+xtick.minor.visible: True
+xtick.minor.size: 4
+
+ytick.color: k
+ytick.direction: in
+ytick.right: True
+ytick.major.pad: 8
+ytick.major.size: 8
+ytick.minor.visible: True
+ytick.minor.size: 4
+
+mathtext.default: regular
+mathtext.fontset: cm
+mathtext.bf: monospace:bold
+
+text.usetex: False
+contour.negative_linestyle: solid

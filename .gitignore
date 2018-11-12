@@ -1,0 +1,9 @@
+*.pyc
+*.ipynb_checkpoints
+*.fits
+*.pdf
+*.jpg
+build/
+_pycache_/
+.DS_Store
+brutifus.egg-info/
