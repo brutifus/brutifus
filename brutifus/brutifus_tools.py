@@ -12,13 +12,58 @@
 '''
 # ----------------------------------------------------------------------------------------
 
+import os
 import numpy as np
 import signal 
+
 from astropy.constants import c
+from astropy.io import fits
 
 from .brutifus_metadata import __version__ as version
+from . import brutifus_metadata as bifus_m
  
- # ----------------------------------------------------------------------------------------      
+# ----------------------------------------------------------------------------------------       
+def extract_cube(fn,inst):
+   ''' Extracts the data and error associated with a given datacube.
+   
+   :Args: 
+      fn: relative path to file
+      inst: string
+            Name of the instrument that took the data
+   
+   :Returns:
+      [[lams,data,error], [header0, header_data, header_error]]
+   
+   '''
+   
+   if not(os.path.isfile(fn)):
+      raise Exception('File not found: %s' % (fn))
+   
+   if not(inst in bifus_m.ffmt.keys()):
+      raise Exception('Instrument not supported: %s' % (inst))
+   
+   # Open the FITS file, and extract the info I need
+   hdu = fits.open(fn)
+   
+   if inst == 'MUSE':
+      header0 = hdu[0].header
+   else:
+      header0 = None
+      
+   data = hdu[bifus_m.ffmt[inst]['data']].data
+   header_data = hdu[bifus_m.ffmt[inst]['data']].header
+   error = hdu[bifus_m.ffmt[inst]['var']].data
+   header_error = hdu[bifus_m.ffmt[inst]['var']].header
+   hdu.close()
+    
+   # Build the wavelength array - REST frame !
+   lams = np.arange(0, header_data['NAXIS3'],1) * \
+            header_data['CD3_3'] + header_data['CRVAL3']
+   
+   
+   return [[lams,data,error], [header0, header_data, header_error]]
+ 
+# ----------------------------------------------------------------------------------------      
   
 def init_worker():
    '''Handles KeyboardInterrupt during multiprocessing.
@@ -27,7 +72,6 @@ def init_worker():
       See https://noswap.com/blog/python-multiprocessing-keyboardinterrupt
    '''
    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
 # ----------------------------------------------------------------------------------------      
   
 def hdu_add_brutifus(hdu,procstep):

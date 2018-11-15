@@ -5,11 +5,10 @@ Copyright (C) 2018,  F.P.A. Vogt
  
 -----------------------------------------------------------------------------------------
  
-This file contains the master brutifus routines to fit the stellar continuum and the 
-emission lines in an IFU data cube (i.e. MUSE). Most of these routines call sub-routines,
+This file contains the master brutifus routines. Most of these routines call sub-routines,
 after setting the scene/loading datasets/etc ...
  
-Any processing step MUST have a dediacted routine in this file call 'run_XXX', which can
+Any processing step MUST have a dediacted routine in this file called 'run_XXX', which can
 then refer to any existing/new brutifus/Python module.
 
 Created November 2018, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
@@ -52,7 +51,7 @@ log.setLevel('WARNING') # Disable pesky INFO flags from aplpy
 
 # For debugging purposes: turn all warnings into errors
 #warnings.filterwarnings("error", category=AstropyDeprecationWarning)
-#warnings.filterwarnings("error", category=VerifyWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
 from matplotlib import MatplotlibDeprecationWarning
@@ -63,30 +62,17 @@ from astropy.visualization import (PercentileInterval, AsymmetricPercentileInter
                                    AsinhStretch, LinearStretch, ImageNormalize)
 
 # Import brutifus-specific tools
-from . import brutifus_tools
-from . import brutifus_cof
+from . import brutifus_tools as bifus_t
+from . import brutifus_cof as bifus_cof
 from . import brutifus_elf
 from . import brutifus_plots as bifus_p
 from . import brutifus_red
-from .brutifus_metadata import *
+from . import brutifus_metadata as bifus_m
 from .brutifus_metadata import __version__
 
-# Import other important tools, but don't fail, in case the user doesn't need them.
-try:
-    import brutifus_ppxf
-    import ppxf_util as util
-except:
-    print(" ... failed to load brutifus_ppxf ...")
-
-try:
-    import fit_kinematic_pa as fkp
-except:
-   print(" ... failed to load fit_kinematic_pa ...")
-
-
 # ---------------------------------------------------------------------------------------- 
-  
-def run_snr_maps(fn_list, params, suffix = None, do_plot = False):
+def run_crude_snr_maps(fn_list, params, suffix = None, name_in = None, do_plot = False, 
+                       zcorr_lams = False):
    '''
    This function computes the SNR maps for the continuum and Ha (or other line). 
    It also creates a map of spaxels with any signal at all.
@@ -99,8 +85,12 @@ def run_snr_maps(fn_list, params, suffix = None, do_plot = False):
               The dictionary containing all paramaters set by the user. 
       suffix: string [default: None]
               The tag of this step, to be used in all files generated for rapid id.
+      name_in: string
+               name tag to identify which cube to use to run the routine
       do_plot: bool [default: True]
                Whether to make a plot of the SNR maps or not.
+      zcorr_lams: bool
+                  True -> correct the wavelength range for the target redshift.
         
    :Returns:
       fn_list: dictionary
@@ -115,27 +105,22 @@ def run_snr_maps(fn_list, params, suffix = None, do_plot = False):
    if params['verbose']:
       print('-> Computing the SNR maps.')
 
-   # Import the raw fits file 
-   hdu = fits.open(os.path.join(params['data_loc'],params['data_fn']))
-   header0 = hdu[0].header
-   data = hdu[ffmt[params['inst']]['data']].data
-   header1 = hdu[ffmt[params['inst']]['data']].header
-   error = hdu[ffmt[params['inst']]['var']].data
-   header2 = hdu[ffmt[params['inst']]['var']].header
-   hdu.close()
+   # Get the data
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list[name_in],params['inst'])
     
-   # Build the wavelength array - REST frame !
-   lams = np.arange(0, header1['NAXIS3'],1) * header1['CD3_3'] + header1['CRVAL3']
-   lams /= params['z_target']+ 1.
+   # Take redshift into account ?
+   if zcorr_lams: 
+      lams /= params['z_target']+ 1.
    
    # Prepare a storage list 
-   snrs=[]
+   snrs = []
    
    # Here, hide those stupid warnings about all-NaNs slices
-   with warnings.catch_warnings():
-      warnings.simplefilter("ignore", category=RuntimeWarning)
+   #with warnings.catch_warnings():
+      #warnings.simplefilter("ignore", category=RuntimeWarning)
    
-      for r in params['snr_ranges']:
+   for r in params['snr_ranges']:
       
          # The signal
          if r[-1] == 'c':
@@ -170,12 +155,12 @@ def run_snr_maps(fn_list, params, suffix = None, do_plot = False):
    # Add the regions where I have data ... always useful !
    hdu = fits.ImageHDU(anything)
    # Make sure the WCS coordinates are included as well
-   hdu = brutifus_tools.hdu_add_wcs(hdu,header1)
+   hdu = bifus_t.hdu_add_wcs(hdu, header_data)
    # Also include a brief mention about which version of brutifus is being used
-   hdu = brutifus_tools.hdu_add_brutifus(hdu,suffix)
+   hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
    # For reference, also include the line/region this maps are based on
    hdu.header['B_SNRANG'] = ('%.1f-%.1f' % (lams[0],lams[-1]), 'spectral range (A) used for SNR')
-   hdu.header['B_SNTYPE'] = ('x', 'binary map, 0 = no data, 1 = valid spectra')
+   hdu.header['B_SNTYPE'] = ('x', 'binary map: NaN= no data, 1 = valid spectra')
    
    hdus += [hdu]
    
@@ -185,10 +170,10 @@ def run_snr_maps(fn_list, params, suffix = None, do_plot = False):
       hdu = fits.ImageHDU(snrs[i])
       
       # Make sure the WCS coordinates are included as well
-      hdu = brutifus_tools.hdu_add_wcs(hdu,header1)
+      hdu = bifus_t.hdu_add_wcs(hdu, header_data)
       
       # Also include a brief mention about which version of brutifus is being used
-      hdu = brutifus_tools.hdu_add_brutifus(hdu,suffix)
+      hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
       
       # For reference, also include the line/region this maps are based on
       hdu.header['B_SNRANG'] = ('%.1f-%.1f' % (r[0],r[1]), 'spectral range (A) used for SNR')
@@ -198,32 +183,48 @@ def run_snr_maps(fn_list, params, suffix = None, do_plot = False):
         
    # Write the file!
    hdu = fits.HDUList(hdus=hdus)
-   fn_out = os.path.join(params['prod_loc'],suffix+'_'+params['target']+'_snr.fits')
-   hdu.writeto(fn_out, overwrite = True)
-    
-   # And add the filename to the dictionary of filenames
-   fn_list['snr_cube'] = suffix+'_'+params['target']+'_snr.fits'
+   
+   fn_list['snr_maps'] = os.path.join(params['prod_loc'], 
+                                      suffix+'_'+params['target']+'_snr-maps.fits')
+   
+   hdu.writeto(fn_list['snr_maps'], overwrite = True)
         
+   # Make some plots if requested
    if do_plot:
+      
+      # First, plot the region with any signal at all
+      bifus_p.make_2Dplot(fn_list['snr_maps'],
+                             1, 
+                             os.path.join(params['plot_loc'],
+                                          suffix + '_' + params['target'] + 
+                                          '_valid_spectra.pdf'),
+                             #contour_fn = None, 
+                             #contour_ext = None,
+                             #contour_levels = [None], 
+                             vmin = 0, vmax = 1.5,
+                             cmap = None, 
+                             cblabel = None,
+                             scalebar = params['scalebar'],
+                            )  
+   
       # Alright, let's take out the big guns ...    
       for (i,r) in enumerate(params['snr_ranges']):
              
-         bifus_p.make_2Dplot(fn_out,i+2, 
+         bifus_p.make_2Dplot(fn_list['snr_maps'],
+                             i+2, 
                              os.path.join(params['plot_loc'],
                                           suffix + '_' + params['target'] + 
                                           '_snr_%.1f-%.1f.pdf' % (r[0],r[1])),
-                             contour_fn = fn_out, 
-                             contour_ext = i+2,
-                             contour_levels = [5], 
-                             vmin=0, vmax=50,
-                             cbticks=[0, 3, 5, 10, 50], 
+                             vmin = 0, vmax = 50,
+                             cmap = 'alligator_r',
                              cblabel = r"S/N ('%s') %.1f\AA-%.1f\AA" % (r[-1],r[0],r[1]),
                              scalebar = params['scalebar'],
-                            )  
-                                            
+                            )                                         
    return fn_list
+   
 # ---------------------------------------------------------------------------------------- 
 def run_plot_RGB(fn_list, params, suffix=None, 
+                        name_in = None,
                         bands = [[[7500.,9300.],[6000.,7500.],[4800.,6000.]],], 
                         conts = [[None, None, None],],
                         stretches = ['log',],
@@ -240,6 +241,8 @@ def run_plot_RGB(fn_list, params, suffix=None,
               The dictionary containing all paramaters set by the user. 
       suffix: string [default: None]
               The tag of this step, to be used in all files generated for rapid id.
+      name_in: string
+               name tag to identify which cube to use to run the routine
       bands: list of list of list [default: [[[7500,9300],[6000,7500],[4800,6000]],],
            A list of wavelength pairs limiting the R, G & B channels.
       conts: list of list of list [default: [[None,None,None],],
@@ -266,20 +269,10 @@ def run_plot_RGB(fn_list, params, suffix=None,
    if params['verbose']:
       print('-> Creating some RGB images.')
     
-   # Very well, now I need to open the datacube.
-   fn = os.path.join(params['data_loc'],params['data_fn'])
-
-   # Alright, now I need to extract the line fluxes
-   # Open the file
-   hdu = fits.open(fn)
-   header0 = hdu[0].header
-   header1 = hdu[ffmt[params['inst']]['data']].header
-   data = hdu[ffmt[params['inst']]['data']].data
-   hdu.close()
-    
-   # Build the wavelength array in Angstroem
-   lams = np.arange(0, header1['NAXIS3'],1) * header1['CD3_3'] + header1['CRVAL3']
-
+   # Get the data
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list[name_in],params['inst'])
+   
    # Step 1: Construct individual images for each band
    for (i,band) in enumerate(bands):
         
@@ -299,23 +292,20 @@ def run_plot_RGB(fn_list, params, suffix=None,
          fns.append(fn)
          hdu = fits.PrimaryHDU(scidata)
          # Add the wcs info
-         hdu = brutifus_tools.hdu_add_wcs(hdu, header1)
+         hdu = bifus_t.hdu_add_wcs(hdu, header_data)
          outfits = fits.HDUList([hdu])
          outfits.writeto(fn,overwrite=True)
             
         
-      ofn = os.path.join(params['plot_loc'],
-               suffix+'_'+params['target']+'_RGB_%i-%i_%i-%i_%i-%i.pdf' % (band[0][0],
-                                                                           band[0][1],
-                                                                           band[1][0],
-                                                                           band[1][1],
-                                                                           band[2][0],
-                                                                           band[2][1]))
+      ofn = os.path.join(params['plot_loc'], suffix+'_'+params['target']+'_'+name_in+
+                         '_RGB_%i-%i_%i-%i_%i-%i.pdf' % (band[0][0],band[0][1],
+                                                         band[1][0],band[1][1],
+                                                         band[2][0],band[2][1]))
                                                                              
       # Great, I am now ready to call the plotting function
       bifus_p.make_RGBplot(fns, ofn,  stretch = stretches[i],
                            plims = stretch_plims[i], vlims = stretch_vlims[i],
-                           title = r'\smaller R: %s-%s\,\AA | G: %s-%s\,\AA | B: %s-%s\,\AA' %  
+                           title = r'\smaller R: %s-%s\,\AA\  G: %s-%s\,\AA\  B: %s-%s\,\AA' %  
                                    (band[0][0],band[0][1],
                                     band[1][0], band[1][1],
                                     band[2][0], band[2][1]),
@@ -326,9 +316,9 @@ def run_plot_RGB(fn_list, params, suffix=None,
          os.remove(f)    
     
    return fn_list    
+   
 # ----------------------------------------------------------------------------------------
-
-def run_sky_sub(fn_list, params, suffix = None):
+def run_sky_sub(fn_list, params, suffix = None, name_in = None, name_out = None):
    '''Performs  a manual sky subtraction, when the observation strategy was flawed.
     
    :Args:
@@ -338,43 +328,36 @@ def run_sky_sub(fn_list, params, suffix = None):
               The dictionary containing all paramaters set by the user. 
       suffix: string [default: None]
               The tag of this step, to be used in all files generated for rapid id.
-        
+      name_in: string
+               name tag to identify which cube to use to run the routine
+      name_out: string
+               name tag to identify which cube come out of the routine
+    
    :Returns:
       fn_list: dictionary
-               The updated dictionary of filenames. 
-                 
+               The updated dictionary of filenames.               
    '''
    
    if params['verbose']:
       print('-> Subtracting the sky ...')
     
-   # Very well, now I need to open the datacube.
-   fn = os.path.join(params['data_loc'],params['data_fn'])
-
-   # Open the file
-   hdu = fits.open(fn)
-   header0 = hdu[0].header
-   header1 = hdu[ffmt[params['inst']]['data']].header
-   data = hdu[ffmt[params['inst']]['data']].data
-   header2 = hdu[ffmt[params['inst']]['var']].header
-   error = hdu[ffmt[params['inst']]['var']].data
-   hdu.close()
-    
-   # Build the wavelength array in Angstroem
-   lams = np.arange(0, header1['NAXIS3'],1) * header1['CD3_3'] + header1['CRVAL3']
-   
-   # Assemble a 2D map of my sky spaxels
+   # Get the data
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list[name_in],params['inst'])
+  
+   # Assemble a 2D map of the sky spaxels
    sky_spaxels = np.zeros_like(data[0,:,:])
-   cys,cxs = np.mgrid[0:header1['NAXIS2'],0:header1['NAXIS1']]
-    
+   cys,cxs = np.mgrid[0:header_data['NAXIS2'],0:header_data['NAXIS1']]
+   
+   #  Flag all the (sky) spaxels within the user-defined aperture
    for sr in params['sky_regions']:
          
-      if len(sr) == 3:
+      if len(sr) == 3: # Circular aperture
          
          d = np.sqrt( (cxs-sr[0])**2 + (cys-sr[1])**2)
          sky_spaxels[d<=sr[2]] = 1
       
-      elif len(sr) ==4:
+      elif len(sr) ==4: # Square aperture
          
          sky_spaxels[sr[1]:sr[1]+sr[3]+1, sr[0]:sr[0]+sr[2]+1] = 1
    
@@ -389,41 +372,64 @@ def run_sky_sub(fn_list, params, suffix = None):
    
    ax1 = plt.subplot(gs[0,0])
    
-   ax1.semilogy(lams,sky_spec, 'k-', 
-            drawstyle='steps-mid', lw=0.8)
+   ax1.semilogy(lams,sky_spec, 'k-', drawstyle='steps-mid', lw=0.8)
    
    ax1.set_xlim((lams[0],lams[-1]))
    ax1.set_xlabel('Observed wavelength [\AA]')
-   ax1.set_ylabel(r'F$_\lambda$ [$10^{-20}$ erg s$^{-1}$ cm$^{-2}$ \AA$^{-1}$]')
+   ax1.set_ylabel(bifus_m.ffmt[params['inst']]['funit'])
    
    plt.savefig(os.path.join(params['plot_loc'], suffix+'_'+params['target']+'_skyspec.pdf'))
    plt.close(1)
    
    # In addition, also make a plot showing all the sky locations
-   plt.figure(1, figsize=(6.94,6.5))
-   gs = gridspec.GridSpec(1,1, height_ratios=[1], width_ratios=[1],
-                          left=0.08, right=0.98, bottom=0.1, top=0.98, wspace=0.02, hspace=0.03)
    
-   ax1 = plt.subplot(gs[0,0])
+   # Start by assembling a white light image
+   wl_im = np.nansum(data, axis = 0)
    
-   # Build a white-light image
-   norm = ImageNormalize(np.sum(data,axis=0), interval=AsymmetricPercentileInterval(0,90),
-                         stretch=AsinhStretch())
-   ax1.imshow(np.sum(data, axis = 0), origin = 'lower', cmap = 'gray_r', norm=norm)
+   # Very well, now let's create a fits file to save this as required.
+   hdu0 = fits.PrimaryHDU(None, header0)
+   # Add the white light image
+   hdu1 = fits.ImageHDU(wl_im)
+   # Make sure the WCS coordinates are included as well
+   hdu1 = bifus_t.hdu_add_wcs(hdu1, header_data)
+   # Also include a brief mention about which version of brutifus is being used
+   hdu1 = bifus_t.hdu_add_brutifus(hdu1, suffix)
+        
+   # Write the file!
+   hdu = fits.HDUList(hdus=[hdu0, hdu1])
+   
+   fn_list['wl_im'] = os.path.join(params['prod_loc'], 
+                                   suffix+'_'+params['target']+'_wl-im.fits')
+   hdu.writeto(fn_list['wl_im'], overwrite = True)
+   
+   # Image filename
+   ofn = os.path.join(params['plot_loc'], 
+                                   suffix+'_'+params['target']+'_sky-regions.pdf')
+   
+   # Make the base figure
+   (fig, ax1, ofn) = bifus_p.make_2Dplot(fn_list['wl_im'], ext = 1, 
+                                         ofn = ofn,
+                                         stretch = 'linear',
+                                         pmin = 5,
+                                         pmax = 80,
+                                         )
    
    # Show all the sky spaxels
-   sky_spaxels[sky_spaxels ==0] = np.nan
-   ax1.imshow(sky_spaxels, origin= 'lower', cmap='Reds', vmin = 0, vmax = 1, alpha=0.7)
+   #sky_spaxels[sky_spaxels ==0] = np.nan
+   #ax1.imshow(sky_spaxels, origin= 'lower', cmap='winter', vmin = 0, vmax = 1, alpha=0.5)
+   ax1.contour(sky_spaxels, levels=[0.5], colors = ['darkorange'], 
+               linewidths = [0.5], origin = 'lower')
+   # TODO: have the contours follow the pixel edges
    
-   # Fine tune things a bit
-   ax1.set_xlabel('x [pixel]')
-   ax1.set_ylabel('y [pixel]')
    
-   plt.savefig(os.path.join(params['plot_loc'], suffix+'_'+params['target']+'_skyspaxels.pdf'))
-   plt.close(1)
+   fig.savefig(ofn)
+   
+   # Now get started with the actual sky subtraction
    
    # Turn the spectrum into a cube 
-   sky_cube = np.repeat(np.repeat(sky_spec[:,np.newaxis],header1['NAXIS2'],axis=1)[:,:,np.newaxis],header1['NAXIS1'],axis=2)
+   sky_cube = np.repeat(np.repeat(sky_spec[:,np.newaxis], 
+                                  header_data['NAXIS2'], axis=1)[:,:,np.newaxis],
+                        header_data['NAXIS1'], axis=2)
    
    # Perform the sky subtraction
    data -= sky_cube
@@ -438,19 +444,18 @@ def run_sky_sub(fn_list, params, suffix = None):
         
    for hdu in [hdu1,hdu2]:
       # Make sure the WCS coordinates are included as well
-      hdu = brutifus_tools.hdu_add_wcs(hdu,header1)
-      hdu = brutifus_tools.hdu_add_lams(hdu,header1)
+      hdu = bifus_t.hdu_add_wcs(hdu, header_data)
+      hdu = bifus_t.hdu_add_lams(hdu, header_data)
       # Also include a brief mention about which version of brutifus is being used
-      hdu = brutifus_tools.hdu_add_brutifus(hdu,suffix)
-      # Add the line reference wavelength for future references
-                     
-   hdu = fits.HDUList(hdus=[hdu0,hdu1,hdu2])
-   fn_out = os.path.join(params['prod_loc'],
-                         suffix+'_'+params['target']+'_skysub.fits')
-   hdu.writeto(fn_out, overwrite=True)
-        
+      hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
+
+   
    # Add the filename to the dictionary of filenames
-   fn_list['skysub_cube'] = suffix+'_'+params['target']+'_skysub.fits'
+   fn_list[name_out] = os.path.join(params['prod_loc'], 
+                                    suffix+'_'+params['target']+'_skysub-cube.fits')
+   hdu = fits.HDUList(hdus=[hdu0, hdu1, hdu2])  
+   hdu.writeto( fn_list[name_out], overwrite=True)
+        
    
    return fn_list
 # ----------------------------------------------------------------------------------------
@@ -462,15 +467,15 @@ def run_gal_dered(fn_list, params, suffix = None, do_plot = False):
     correct for our "local" extinction. Intended for extragalactic sources.
     
     :Args:
-        fn_list: dictionary
-                 The dictionary containing all filenames created by brutifus.
-        params: dictionary
-                The dictionary containing all paramaters set by the user. 
-        suffix: string [default: None]
-                The tag of this step, to be used in all files generated for rapid id.
-        do_plot: bool [default: True]
-                 Whether to make a plot of the Alambda correction applied or not.
-        
+      fn_list: dictionary
+               The dictionary containing all filenames created by brutifus.
+      params: dictionary
+              The dictionary containing all paramaters set by the user. 
+      suffix: string [default: None]
+              The tag of this step, to be used in all files generated for rapid id.
+      do_plot: bool [default: True]
+               Whether to make a plot of the Alambda correction applied or not.
+
     :Returns:
         fn_list: dictionary
                  The updated dictionary of filenames. 
@@ -481,7 +486,6 @@ def run_gal_dered(fn_list, params, suffix = None, do_plot = False):
     '''
     
     raise Exception('Check and update this function!!!')
-    
     
     if params['verbose']:
         print('-> Correcting for Galactic extinction.')
@@ -546,47 +550,55 @@ def run_gal_dered(fn_list, params, suffix = None, do_plot = False):
     
 # ----------------------------------------------------------------------------------------
 
-def run_fit_continuum(fn_list, params, suffix=None, start_row = None, end_row = None, 
+def run_fit_continuum(fn_list, params, suffix=None, name_in = None,
+                      start_row = None, end_row = None,
                       method='lowess'):
    ''' 
-   This function fits the continuum in the datacube, either using ppxf (if SNR is decent)
-   or using a simple polynomial value. It is designed to use multiprocessing to speed
-   things up on good computers. It deals with the data columns-per-columns, and 
+   This function fits the continuum in the datacube. It is designed to use multiprocessing
+   to speed things up on good computers. It deals with the data columns-per-columns, and
    can be restarted mid-course, in case of a crash. 
+   
+   :Args:
+      fn_list: dictionary
+               The dictionary containing all filenames created by brutifus.
+      params: dictionary
+              The dictionary containing all paramaters set by the user. 
+      suffix: string [default: None]
+              The tag of this step, to be used in all files generated for rapid id.
+      name_in: string
+               name tag to identify which cube to use to run the routine
+    :Returns:
+        fn_list: dictionary
+                 The updated dictionary of filenames. 
    '''
     
-   # For the bad continuum: run a LOWESS filter from statsmodel.nonparametric
-   #sm.nonparametric.smoothers_lowess.lowess(spec,lams,frac=0.05, it=5)
-   # For the good fits, run ppxf
+   # For the bad continuum: run a LOWESS filter from statsmodel.nonparametric:
+   # sm.nonparametric.smoothers_lowess.lowess(spec,lams,frac=0.05, it=5)
     
    # Rather than launch it all at once, let's be smart in case of problems. I'll run
    # the fits row-by-row with multiprocessing (hence up to 300cpus can help!), and save
    # between each row.
    
-   # First, load the datacube to be fitted. Use the galactic deredened one, if it exists.
-   #if os.path.isfile(os.path.join(params['prod_loc'],fn_list['galdered_cube'])):
-   #   hdu = fits.open(os.path.join(params['prod_loc'],fn_list['galdered_cube']))
-   #else: 
-   #hdu = fits.open(os.path.join(params['data_loc'],params['data_fn']))
-   hdu = fits.open(os.path.join(params['prod_loc'],fn_list['skysub_cube']))
+    # Get the data
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list[name_in],params['inst'])
    
-   header0 = hdu[0].header
-   data = hdu[ffmt[params['inst']]['data']].data
-   header1 = hdu[ffmt[params['inst']]['data']].header
-   error = hdu[ffmt[params['inst']]['var']].data
-   header2 = hdu[ffmt[params['inst']]['var']].header
-   hdu.close()
-    
-   # Build the wavelength array
-   lams = np.arange(0, header1['NAXIS3'],1) * header1['CD3_3'] + header1['CRVAL3']
-    
-   # I also need to load the SNR cube for the spaxel selection
-   hdu = fits.open(os.path.join(params['prod_loc'],fn_list['snr_cube']))
-   snr_cont = hdu[1+params['lowess_snr_id']].data
-   hdu.close()
-
+   # I also need to load the SNR cube to know where I have data I want to fit
+   '''
+   ### DISABLED FOR NOW - ONLY MEANINGFUl WITH MORE THAN 1 CONT. FIT. TECHNIQUE ###
+   try:
+      print(os.path.join(params['prod_loc'],fn_list['snr_maps']))
+      hdu = fits.open(os.path.join(params['prod_loc'],fn_list['snr_maps']))
+      is_nonnan = hdu[1].data
+      hdu.close()
+   except:
+      raise Exception('Failed to load the crude SNR cube. Did you run the step ?')
+   '''
+   
    # Get some info about the cube
-   nrows = header1['NAXIS1']
+   nrows = header_data['NAXIS1']
+   
+   # Where do I start and end the processing ?
    if start_row is None:
       start_row = 0
    if end_row is None:
@@ -597,158 +609,34 @@ def run_fit_continuum(fn_list, params, suffix=None, start_row = None, end_row = 
       if params['verbose']:
          print('-> Starting the continuum fitting using the LOWESS approach.')
             
-      fit_func = partial(brutifus_cof.lowess_fit, lams=lams, 
-                         frac=params['lowess_frac'], it=params['lowess_it'])
+      fit_func = partial(bifus_cof.lowess_fit, lams = lams, 
+                         frac = params['lowess_frac'], it = params['lowess_it'])
       # Note here the clever use of the partial function, that turns the lowess_fit
       # function from something that takes 4 arguments into something that only takes 1
       # argument ... thus perfect for the upcoming "map" functions !
-        
-   elif method == 'ppxf':
-      if params['verbose']:
-         print('-> Starting the continuum fitting using PPXF.')
-      
-      raise Exception('Check me!')
-      # I need to do some special preparation for 'ppxf'. Namely, log-rebin the 
-      # templates. I could do that for each fit, bit it would cost me time. At the price 
-      # of a larger code here, do it only once, and save "tons" of time (~0.5s per fit).
-      # The code below is based on the examples provided by M. Cappellari within ppxf 
-      # istelf (ppxf_kinematics_example_sauron.py & ppxf_population_example_sdss.py), 
-      # but has been modified to account a wavelength dependant spectral resolution of 
-      # the data. And avoid doing the same thing multiple times via multiprocessing. 
-      
-      # The full spectral range
-      lam_range = np.array([lams[0],lams[-1]])
-      
-      # De-redshift it using the user's best guess
-      # Here's the original text from M. Cappellari:
-      #
-      # << If the galaxy is at a significant redshift (z > 0.03), one would need to 
-      # apply a large velocity shift in PPXF to match the template to the galaxy 
-      # spectrum. This would require a large initial value for the velocity (V>1e4 km/s)
-      # in the input parameter START = [V,sig]. This can cause PPXF to stop!
-      # The solution consists of bringing the galaxy spectrum roughly to the
-      # rest-frame wavelength, before calling PPXF. In practice there is no
-      # need to modify the spectrum before the usual LOG_REBIN, given that a
-      # red shift corresponds to a linear shift of the log-rebinned spectrum.
-      # One just needs to compute the wavelength range in the rest-frame
-      # and adjust the instrumental resolution of the galaxy observations. >>
-      lams0 = lams/(params['z_target']+1)
-      lam_range0 = np.array([lams0[0],lams0[-1]])
-        
-      # We can only fit the spectra where they overlap with the spectral library.
-      # Get one of the templates, figure out its range, and derive the fit limits.
-      sl_fns = glob.glob(os.path.join(sl_models[params['ppxf_sl_name']]['sl_loc'],'*'))
-      hdu_sl = fits.open(sl_fns[0])
-      header_sl = hdu_sl[0].header
-      hdu_sl.close()
-      
-      lams_sl = np.arange(0, header_sl['NAXIS1'],1)*header_sl['CDELT1'] + \
-                                                                       header_sl['CRVAL1']
-      lam_range_sl = [lams_sl[0],lams_sl[-1]]
-        
-      # What are my fit limits, then ?
-      fit_lims =[np.max([lam_range0[0],lam_range_sl[0]]), 
-                 np.min([lam_range0[1],lam_range_sl[1]])]  
-      mask = (lams0 > fit_lims[0]) * (lams0 < fit_lims[1])
-      lams0c = lams0[mask]
-      lam_range0c = np.array([lams0c[0], lams0c[-1]])
-        
-      # Soon, I will be log-rebining the spectra. What are the new bins going to be ?
-      log_lams0c, emptyspec, velscale = brutifus_tools.log_rebin(lams0c,np.zeros_like(lams0c), 
-                                                     sampling = params['ppxf_sampling'])
-        
-      # Deal with the template spectra: disperse them according to the instrument, and
-      # log-rebin them
-      if params['verbose']:
-         sys.stdout.write('\r   Preparing the templates ... ')
-         sys.stdout.flush()
-            
-      templates, lam_range_temp, logAge_grid, metal_grid, log_lams_temp = \
-      brutifus_ppxf.setup_spectral_library(velscale, params['inst'], 
-                                          params['ppxf_sl_name'], fit_lims, 
-                                          params['z_target'])
-      if params['verbose']:   
-         sys.stdout.write('done.')
-         print(' ')
-         sys.stdout.flush()                                      
-                                          
-                                          
-      # For the fit reconstruction later on, save the various wavelength ranges, etc ...
-      fn = os.path.join(params['tmp_loc'],
-                          suffix+'_'+params['target']+'_ppxf_lams.pkl')
-      file = open(fn,'w')
-      pickle.dump([lams,lams0,lams0c,log_lams0c],file)
-      file.close()
-      # And add the generic pickle filename to the dictionary of filenames
-      fn_list['ppxf_lams'] = suffix+'_'+params['target']+'_ppxf_lams.pkl'              
-                                          
-      # From M. Cappellari:
-      # << The galaxy and the template spectra do not have the same starting wavelength.
-      # For this reason an extra velocity shift DV has to be applied to the template
-      # to fit the galaxy spectrum. We remove this artificial shift by using the
-      # keyword VSYST in the call to PPXF below, so that all velocities are
-      # measured with respect to DV.>>
-      #
-      dv = c*np.log(lam_range_temp[0]/lam_range0c[0]) 
-        
-      # Initial estimate of the galaxy velocity in km/s:        
-      vel = 0.   # It's been de-redshifted (using user's guess)
-      start = [vel, 100.]  # (km/s), starting guess for [V,sigma]
-      
-      # Now create a list of "good pixels", i.e. mask emission lines and stuff.
-      # List is the default one from ppxf.
-      goodpixels = util.determine_goodpixels(np.log(log_lams0c), lam_range_temp, vel/c)
-
-      # See the pPXF documentation for the keyword REGUL, and an explanation of the 
-      # following two lines
-      templates /= np.median(templates) # Normalizes templates by a scalar
-      regul_err = params['ppxf_regul_err']  # Desired regularization error
-      
-      fit_func = partial(brutifus_ppxf.ppxf_population, templates=templates, 
-                         velscale=velscale, start=start, goodpixels=goodpixels, 
-                         plot=False, moments=params['ppxf_moments'], 
-                         degree=params['ppxf_degree'], vsyst=dv, clean=False, 
-                         mdegree=params['ppxf_mdegree'], regul=1./regul_err)    
+   
+   else:
+      raise Exception('Continuum fitting method "%s" not supported.' % (method))
 
    # Very well, let's start the loop on rows. If the code crashes/is interrupted, you'll
    # loose the current row. Just live with it.
-   for row in np.linspace(start_row,end_row, end_row-start_row+1).astype(int):   
+   for row in np.linspace(start_row, end_row, end_row - start_row + 1).astype(int):   
       
       # Alright, now deal with the spaxels outside the user-chosen SNR range.
       # Replace them with nan's
-      good_spaxels = np.ones((header1['NAXIS2']))
+      good_spaxels = np.ones((header_data['NAXIS2']))
+      
+      ''' 
+      ### DISABLED FOR NOW - ONLY MEANINGFUl WITH MORE THAN 1 CONT. FIT. TECHNIQUE ###
       if params[method+'_snr_min']:
          good_spaxels[snr_cont[:,row] < params[method+'_snr_min']] = np.nan
       if params[method+'_snr_max']:
          good_spaxels[snr_cont[:,row] >= params[method+'_snr_max']] = np.nan
-
+      '''
+      
       # Build a list of spectra to be fitted
-      specs = [data[:,i,row] * good_spaxels[i] for i in range(header1['NAXIS2'])]
-      errs = [error[:,i,row] * good_spaxels[i] for i in range(header1['NAXIS2'])]
-        
-      if method == 'ppxf':
-         raise Exception('Check me too!')
-         if params['verbose']:
-            sys.stdout.write('\r   Log-rebin spectra in row %2.i ...            '%row)
-            sys.stdout.flush()
-                
-         # I need to do some special preparation for 'ppxf'. Namely, log-rebin the 
-         # spectra, and crop them to an appropriate wavelength after de-redshifting. 
-         # Let's get started. 
-         # To save time, only log-rebin spectra that are not all nans
-         specs = [brutifus_tools.log_rebin(lam_range0c, this_spec[mask],
-                                     sampling=params['ppxf_sampling'])[1] 
-                                     if not(np.all(np.isnan(this_spec))) else np.nan 
-                                     for this_spec in specs]                      
-         # Also take care of the error
-         errs = [brutifus_tools.log_rebin(lam_range0c, this_err[mask], 
-                                     sampling=params['ppxf_sampling'])[1]
-                                     if not(np.all(np.isnan(this_err))) else np.nan  
-                                     for this_err in errs]                                                                 
-                                                                            
-         # Combine both spectra and errors, to feed only 1 element to fit_func
-         # Turn the error into a std to feed ppxf
-         specs = [[specs[i],np.sqrt(errs[i])] for i in range(header1['NAXIS2'])]
+      specs = [data[:,i,row] * good_spaxels[i] for i in range(header_data['NAXIS2'])]
+      errs = [error[:,i,row] * good_spaxels[i] for i in range(header_data['NAXIS2'])]
         
       # Set up the multiprocessing pool of workers
       if params['multiprocessing']:
@@ -758,20 +646,16 @@ def run_fit_continuum(fn_list, params, suffix=None, start_row = None, end_row = 
                 
          else: # Ok, just use them all ...
             nproc = multiprocessing.cpu_count()
-                
-         # Limiting the maximum number of cpus for ppxf, to avoid memory errors... 
-         if nproc > 8 and method == 'ppxf':
-            nproc = 8
-                
+                        
          pool = multiprocessing.Pool(processes = nproc, 
-                                     initializer = brutifus_tools.init_worker())    
+                                     initializer = bifus_t.init_worker())    
 
          if params['verbose']:
             sys.stdout.write('\r   Fitting spectra in row %2.i, %i at a time ...' % 
                                  (row,nproc))
             sys.stdout.flush()
 
-         # Launch the fitting ! Make sure to deal with KeyBoard Interrupt properly
+         # Launch the fitting ! Make sure I deal with KeyBoard Interrupt properly
          # Only a problem for multiprocessing. For the rest of the code, whatever.
          try:   
             conts = pool.map(fit_func, specs)
@@ -794,9 +678,15 @@ def run_fit_continuum(fn_list, params, suffix=None, start_row = None, end_row = 
                                 
          conts = map(fit_func, specs)
 
-      # Here, I need to save these results. Pickle could be fast and temporary,
-      # Until I then re-build the entire cube later on ? Also allow for better 
+      # Here, I need to save these results. Pickle is fast and temporary,
+      # until I re-build the entire cube later on. It also allows for better 
       # row-by-row flexibility.
+      
+      if not(os.path.isdir(params['tmp_loc'])):
+         print(' ! Requested storage location does not exist. Creating it ...')
+         print(' %s' % params['tmp_loc'])
+         os .mkdir(params['tmp_loc'])
+      
       fn = os.path.join(params['tmp_loc'],
                         suffix+'_'+params['target']+'_'+method+'_row_'+
                         str(np.int(row)).zfill(4)+'.pkl')
@@ -807,50 +697,43 @@ def run_fit_continuum(fn_list, params, suffix=None, start_row = None, end_row = 
    # And add the generic pickle filename to the dictionary of filenames
    fn_list[method+'_pickle'] = suffix+'_'+params['target']+'_'+method+'_row_'
         
-   print(' done !')
+   print(' fitting completed !')
     
    return fn_list
+   
 # ----------------------------------------------------------------------------------------
-
-def run_make_continuum_cube(fn_list, params, suffix=None, method='lowess', 
-                            do_sub_sky=True):   
+def run_make_continuum_cube(fn_list, params, suffix=None,
+                            method='lowess'):   
    ''' 
    This function is designed to construct a "usable and decent" datacube out of the
    mess generated by the continuum fitting function, i.e. out of the many pickle 
    files generated.
+   
+   :Args:
+      fn_list: dictionary
+               The dictionary containing all filenames created by brutifus.
+      params: dictionary
+              The dictionary containing all paramaters set by the user. 
+      suffix: string [default: None]
+              The tag of this step, to be used in all files generated for rapid id.
+      method: string
+              which fits to gather ?
+   
    '''
     
    if params['verbose']:
       print('-> Constructing the datacube for the continuum fitting (%s).' % method)
-       
-   # First, load the original datacube. I need to know how much stuff was fitted.
-   #if fn_list['galdered_cube'] is None:
-   #     hdu = fits.open(os.path.join(params['data_loc'],params['data_fn']))
-   # else:
-   hdu = fits.open(os.path.join(params['data_loc'],params['data_fn']))
+    
+   # Get the raw data open, to know how big things are ...
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list['raw_cube'],params['inst']) 
+        
+   # Get some info
+   nrows = header_data['NAXIS1']
    
-   header0 = hdu[0].header
-   data = hdu[ffmt[params['inst']]['data']].data
-   header1 = hdu[ffmt[params['inst']]['data']].header
-   error = hdu[ffmt[params['inst']]['data']].data
-   header2 = hdu[ffmt[params['inst']]['data']].header
-   hdu.close()
-    
-   nrows = header1['NAXIS1']
-    
+   # Prepare a continuum cube structure
    cont_cube = np.zeros_like(data) * np.nan
-
-   # In the case of ppxf, also extract the stellar moments.
-   # Not the most trustworthy, but interesting nonetheless.
-   '''
-   if params['ppxf_moments']>0:
-      ppxf_sol_map = np.zeros((params['ppxf_moments'],header1['NAXIS2'],
-                                                        header1['NAXIS1'])) * np.nan
-   '''
-   # For ppxf, also create a spectrum with the de-logged rebin original spectra. Useful 
-   # to characterize the error associated with log-bin-delog-rebin process employed here.
-   delog_raw_cube = np.zeros_like(data) * np.nan
-                                                        
+                                          
    # Loop through the rows, and extract the results. 
    # Try to loop through everything - in case this step was run in chunks.
    for row in range(0,nrows):
@@ -872,105 +755,94 @@ def run_make_continuum_cube(fn_list, params, suffix=None, method='lowess',
          if method=='lowess':
             # I directly saved the continuum as an array just get it out.
             cont_cube[:,:,row] = np.array(conts).T 
-         elif method =='ppxf':
-            # Alright, in this case, the pickle file contains the output from ppxf
-            
-            # Extract the various wavelength ranges, etc ...
-            fn = os.path.join(params['tmp_loc'],fn_list['ppxf_lams'])
-            f = open(fn,'r')
-            [lams,lams0,lams0c,log_lams0c] = pickle.load(f)
-            f.close()
-                
-            # The fit outputs are all on the log_lams0c grid, and I want them back on
-            # lams.  
-            # First, extract the bestfit spectra. 
-            # For test purposes, also extract the galaxy spectra with pp.galaxy
-            bestfits = [pp[0] if not(pp is None) else None for pp in conts]
-            galaxys = [pp[1] if not(pp is None) else None for pp in conts]
-                
-            # And the stellar moments
-            ppxf_sol_map[:,:,row] = np.array([pp[2] if not(pp is None) else 
-                                                  np.zeros(params['ppxf_moments'])*np.nan 
-                                                  for pp in conts]).T
-                                                  
-            # Now, I need storage that spans the original data range
-            full_bestfits = [np.zeros_like(lams0) for this_spec in bestfits]
-            full_galaxys = [np.zeros_like(lams0) for this_spec in galaxys]
-                
-            # Now, I want to delog-rebin the spectra back to the original grid
-            for (k,cube) in enumerate([bestfits, galaxys]):
-               cube = [brutifus_tools.delog_rebin(log_lams0c, this_spec, lams0c, 
-                                                    sampling=params['ppxf_sampling'])[1] 
-                       if not(this_spec is None) else None for this_spec in cube]
-                            
-               # Now, I want to un-crop this, by adding nans elsewhere. Make a loop, 
-               # but there's probably a more Pythonic way of doing it. 
-               # TODO: try again when my brain won't be that fried ...
-               mask = (lams0 >=lams0c[0]) * (lams0<=lams0c[-1])
-                
-               for (f,fit) in enumerate(cube):
-                  if not(fit is None):
-                     [full_bestfits,full_galaxys][k][f][mask] = fit
-                
-               # And finally, I need to de-redshift that spectra. No need to touch 
-               # the spectra because I did not touch it before.
-                
-               # Ready to save the continuum cube
-               [cont_cube,delog_raw_cube][k][:,:,row] = \
-                                         np.array([full_bestfits, full_galaxys][k]).T
+         
+         else:
+            raise Exception(' Continuum fitting method "%s" unknown.' % (method))
                                      
    # Very well, now let's create a fits file to save this as required.
    hdu0 = fits.PrimaryHDU(None,header0)
    hdu1 = fits.ImageHDU(cont_cube)
+   if method == 'lowess':
+      hdu2 = fits.ImageHDU(np.zeros_like(cont_cube)) # Keep all the errors to 0 for now.
+   else:
+      raise Exception('What errors do you have in your fitted sky ???')
+   
    # Make sure the WCS coordinates are included as well
-   hdu1 = brutifus_tools.hdu_add_wcs(hdu1,header1)
-   hdu1 = brutifus_tools.hdu_add_lams(hdu1,header1)
-   # Also include a brief mention about which version of brutifus is being used
-   hdu1 = brutifus_tools.hdu_add_brutifus(hdu1,suffix)
-   hdu = fits.HDUList(hdus=[hdu0,hdu1])
-   fn_out = os.path.join(params['prod_loc'],
-                          suffix+'_'+params['target']+'_'+method+'.fits')
-   hdu.writeto(fn_out, overwrite=True)
-    
-   # And add the filename to the dictionary of filenames
-   fn_list[method+'_cube'] = suffix+'_'+params['target']+'_'+method+'.fits'
+   for hdu in [hdu1,hdu2]:
+      hdu = bifus_t.hdu_add_wcs(hdu,header_data)
+      hdu = bifus_t.hdu_add_lams(hdu,header_data)
    
-   # Very well, do Iw ant to do the sky subtraction ?
-   if do_sub_sky:
+      # Also include a brief mention about which version of brutifus is being used
+      hdu = bifus_t.hdu_add_brutifus(hdu,suffix)
       
-      if params['verbose']:
-         print(' ')
-         print('-> Subtracting the sky continuum (%s).' % method)
-      
-      # Since this is a substraction, and I assume no error on the sky, the errors remain unchanged
-      data -= cont_cube 
-     
-      # And save this to a new fits file
-      hdu0 = fits.PrimaryHDU(None,header0)
-      hdu1 = fits.ImageHDU(data)
-      hdu2 = fits.ImageHDU(error)
-      
-      for hdu in [hdu1,hdu2]:
-         # Make sure the WCS coordinates are included as well
-         hdu = brutifus_tools.hdu_add_wcs(hdu,header1)
-         hdu = brutifus_tools.hdu_add_lams(hdu,header1)
-         # Also include a brief mention about which version of brutifus is being used
-         hdu = brutifus_tools.hdu_add_brutifus(hdu,suffix)
-      
-      hdus = fits.HDUList(hdus=[hdu0,hdu1,hdu2])
-      fn_out = os.path.join(params['prod_loc'],
-                          suffix+'_'+params['target']+'_skysub-'+method+'.fits')
-      hdus.writeto(fn_out, overwrite=True)
+   hdu = fits.HDUList(hdus=[hdu0, hdu1, hdu2])
+   fn_list[method+'_cube'] = os.path.join(params['prod_loc'],
+                                          suffix+'_'+params['target']+'_'+method+'.fits')
+   hdu.writeto(fn_list[method+'_cube'], overwrite=True)
     
-      # And add the filename to the dictionary of filenames
-      fn_list[method+'_skysub'] = suffix+'_'+params['target']+'_skysub-'+method+'.fits'
-   
-   print(' ')
+   print(' ') # Required toc lear the stdout stuff
     
    return fn_list
- 
-# ----------------------------------------------------------------------------------------
 
+# ----------------------------------------------------------------------------------------
+def run_subtract_continuum(fn_list, params, suffix = None, name_in = None,
+                           name_out = None, method = None):
+   ''' 
+   This function will subtract the sky from a given cube.
+   
+   :Args:
+      fn_list: dictionary
+               The dictionary containing all filenames created by brutifus.
+      params: dictionary
+              The dictionary containing all paramaters set by the user. 
+      suffix: string [default: None]
+              The tag of this step, to be used in all files generated for rapid id.
+      name_in: string
+               name tag to identify which cube to use to run the routine
+      name_out: string
+               name tag to identify which cube comes out of the routine
+   '''
+
+   
+
+
+   if params['verbose']:
+      print('-> Subtracting the sky continuum (%s).' % method)
+   
+   # Get the data open
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list[name_in],params['inst']) 
+   
+   # Get the skycube open
+   [[skylams, skydata, skyerror], [skyheader0, skyheader_data, skyheader_error]] = \
+      bifus_t.extract_cube(fn_list[method+'_cube'],params['inst']) 
+   
+   
+   # Since this is a subtraction, and I assume no error on the sky, the errors remain unchanged
+   data -= skydata 
+     
+   # And save this to a new fits file
+   hdu0 = fits.PrimaryHDU(None,header0)
+   hdu1 = fits.ImageHDU(data)
+   hdu2 = fits.ImageHDU(error)
+      
+   for hdu in [hdu1,hdu2]:
+      # Make sure the WCS coordinates are included as well
+      hdu = bifus_t.hdu_add_wcs(hdu,header_data)
+      hdu = bifus_t.hdu_add_lams(hdu,header_data)
+      # Also include a brief mention about which version of brutifus is being used
+      hdu = bifus_t.hdu_add_brutifus(hdu,suffix)
+      
+   hdus = fits.HDUList(hdus=[hdu0,hdu1,hdu2])
+   
+   fn_list[name_out] = os.path.join(params['prod_loc'], 
+                                    suffix+'_'+params['target']+'_'+method+
+                                    '-contsub-cube.fits')
+   hdus.writeto(fn_list[name_out], overwrite=True)
+
+   return fn_list 
+   
+# ----------------------------------------------------------------------------------------
 def run_fit_elines(fn_list, params, suffix=None, start_row = None, end_row = None, 
                    ):
    ''' 
@@ -1447,103 +1319,102 @@ def run_plot_elines_cube(fn_list, params, suffix=None, vrange=None,
 # ----------------------------------------------------------------------------------------
 
 def run_inspect_fit(fn_list,params, suffix=None, irange=[None,None], vrange=[None,None]):   
-    '''Setup the interactive inspection of the fit results.
+   '''Setup the interactive inspection of the fit results.
     
-    :Args:
-        fn_list: dictionary
-                 The dictionary containing all filenames created by brutifus.
-        params: dictionary
-                The dictionary containing all paramaters set by the user. 
-        suffix: string [default: None]
-                The tag of this step, to be used in all files generated for rapid id.
-        irange: list of int [default: [None,None]]
-                The range of the colorbar for the intensity plot.
-        vrange: list of int [default: [None,None]]    
-                The range of the colorbar for the velocity dispersion plot.
+   :Args:
+      fn_list: dictionary
+               The dictionary containing all filenames created by brutifus.
+      params: dictionary
+               The dictionary containing all paramaters set by the user. 
+      suffix: string [default: None]
+               The tag of this step, to be used in all files generated for rapid id.
+      irange: list of int [default: [None,None]]
+               The range of the colorbar for the intensity plot.
+      vrange: list of int [default: [None,None]]    
+               The range of the colorbar for the velocity dispersion plot.
 
-    :Returns:
-        fn_list: dictionary
-                 The updated dictionary of filenames.
-    '''
+   :Returns:
+      fn_list: dictionary
+               The updated dictionary of filenames.
+   '''
+   
+   
+   if params['verbose']:
+      print('-> Starting the interactive inspection of the fitting.')
     
-    raise Exception('Check and update this function!!!')
+   # Load the different files I need  
+   # Raw data:    
+   if fn_list['galdered_cube'] is None:
+      hdu = fits.open(os.path.join(params['data_loc'],params['data_fn']))
+   else:
+      hdu = fits.open(os.path.join(params['prod_loc'],fn_list['galdered_cube']))
+   header0 = hdu[0].header
+   data = hdu[1].data
+   header1 = hdu[1].header
+   error = hdu[2].data
+   header2 = hdu[2].header
+   hdu.close()
     
-    if params['verbose']:
-        print('-> Starting the interactive inspection of the fitting.')
+   lams = np.arange(0, header1['NAXIS3'],1) * header1['CD3_3'] + header1['CRVAL3']
     
-    # Load the different files I need  
-    # Raw data:    
-    if fn_list['galdered_cube'] is None:
-        hdu = fits.open(os.path.join(params['data_loc'],params['data_fn']))
-    else:
-        hdu = fits.open(os.path.join(params['prod_loc'],fn_list['galdered_cube']))
-    header0 = hdu[0].header
-    data = hdu[1].data
-    header1 = hdu[1].header
-    error = hdu[2].data
-    header2 = hdu[2].header
-    hdu.close()
-    
-    lams = np.arange(0, header1['NAXIS3'],1) * header1['CD3_3'] + header1['CRVAL3']
-    
-    # The Lowess continuum fit
-    if not(fn_list['lowess_cube'] is None):
-        fn = os.path.join(params['prod_loc'],fn_list['lowess_cube'])
-        hdu = fits.open(fn)
-        lowess = hdu[1].data
-        hdu.close()  
-    else:
-        lowess = np.zeros_like(data)*np.nan
+   # The Lowess continuum fit
+   if not(fn_list['lowess_cube'] is None):
+      fn = os.path.join(params['prod_loc'],fn_list['lowess_cube'])
+      hdu = fits.open(fn)
+      lowess = hdu[1].data
+      hdu.close()  
+   else:
+      lowess = np.zeros_like(data)*np.nan
         
-    # The ppxf continuum fit
-    if not(fn_list['ppxf_cube'] is None):
-        fn = os.path.join(params['prod_loc'],fn_list['ppxf_cube'])
-        hdu = fits.open(fn)
-        ppxf = hdu[1].data
-        hdu.close()  
-    else:
-        ppxf = np.zeros_like(data)*np.nan
+   # The ppxf continuum fit
+   if not(fn_list['ppxf_cube'] is None):
+      fn = os.path.join(params['prod_loc'],fn_list['ppxf_cube'])
+      hdu = fits.open(fn)
+      ppxf = hdu[1].data
+      hdu.close()  
+   else:
+      ppxf = np.zeros_like(data)*np.nan
     
-    # The continuum mix datacube
-    if not(fn_list['cont_mix_cube'] is None):
-        fn = os.path.join(params['prod_loc'],fn_list['cont_mix_cube'])
-        hdu = fits.open(fn)
-        cont_mix = hdu[1].data
-        hdu.close()  
-    else:
-        cont_mix = np.zeros_like(data)*np.nan
+   # The continuum mix datacube
+   if not(fn_list['cont_mix_cube'] is None):
+      fn = os.path.join(params['prod_loc'],fn_list['cont_mix_cube'])
+      hdu = fits.open(fn)
+      cont_mix = hdu[1].data
+      hdu.close()  
+   else:
+      cont_mix = np.zeros_like(data)*np.nan
     
        
-    # The elines fit
-    if not(fn_list['elines_spec_cube'] is None):
-        fn = os.path.join(params['prod_loc'],fn_list['elines_spec_cube'])
-        hdu = fits.open(fn)
-        elines = hdu[1].data
-        hdu.close() 
-    else:
-        elines = np.zeros_like(data)*np.nan 
+   # The elines fit
+   if not(fn_list['elines_spec_cube'] is None):
+      fn = os.path.join(params['prod_loc'],fn_list['elines_spec_cube'])
+      hdu = fits.open(fn)
+      elines = hdu[1].data
+      hdu.close() 
+   else:
+      elines = np.zeros_like(data)*np.nan 
     
-    # Also open the map and vmap to be displayed. 
-    # TODO: give user the choice of image on the right
-    if not(fn_list['elines_params_cube'] is None):
-        fn = os.path.join(params['prod_loc'],fn_list['elines_params_cube'])
-        hdu = fits.open(fn)
-        map = hdu[1].data[0]
-        vmap = hdu[1].data[2]
-        hdu.close()
-    else:
-        map = np.zeros_like(data[0])*np.nan
-        vmap = np.zeros_like(data[0])*np.nan    
+   # Also open the map and vmap to be displayed. 
+   # TODO: give user the choice of image on the right
+   if not(fn_list['elines_params_cube'] is None):
+      fn = os.path.join(params['prod_loc'],fn_list['elines_params_cube'])
+      hdu = fits.open(fn)
+      map = hdu[1].data[0]
+      vmap = hdu[1].data[2]
+      hdu.close()
+   else:
+      map = np.zeros_like(data[0])*np.nan
+      vmap = np.zeros_like(data[0])*np.nan    
     
-    # A filename if the user decides to save anything.
-    my_ofn = os.path.join(params['plot_loc'],suffix+'_'+params['target']+'_fit_inspection_')
+   # A filename if the user decides to save anything.
+   my_ofn = os.path.join(params['plot_loc'],suffix+'_'+params['target']+'_fit_inspection_')
 
-    # Launch the interactive plot
-    bifus_p.inspect_spaxels(lams,data,lowess,ppxf,cont_mix, elines, map, vmap, 
-                                 irange, vrange,
-                                 ofn = my_ofn)    
+   # Launch the interactive plot
+   bifus_p.inspect_spaxels(lams,data,lowess,ppxf,cont_mix, elines, map, vmap, 
+                           irange, vrange,
+                           ofn = my_ofn)    
         
-    return fn_list
+   return fn_list
 # ----------------------------------------------------------------------------------------
 
 def run_find_structures(fn_list,params, suffix=None, interactive_mode=True, 

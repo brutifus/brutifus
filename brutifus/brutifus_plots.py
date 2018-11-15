@@ -27,21 +27,119 @@ import matplotlib.gridspec as gridspec
 from astropy.stats import sigma_clipped_stats
 from astropy.io import fits
 import astropy.units as u
+from astropy.wcs import WCS
+import astropy.visualization as astrovis
 
 from . import brutifus_metadata as bifus_m
 
 # Set the proper plotting style
 plt.style.use(bifus_m.plotstyle)
 
-# ---| Custom colormaps for brutifus |--------------------------------------------------------
+# ---| Some high level plotting stuff |---------------------------------------------------
 
+def get_fig_dims(nx, ny):
+   ''' Return all the necessary figure dimensions, given the size of the image to plot.'''
+   
+    
+   fig_height = bifus_m.margin_top + bifus_m.cb_thick + bifus_m.margin_bottom + \
+                ny/nx * (bifus_m.fig_width - bifus_m.margin_right - bifus_m.margin_left)
+   
+   height_ratios = [bifus_m.cb_thick/fig_height, 1]
+   
+   left = bifus_m.margin_left/bifus_m.fig_width
+   right = 1-bifus_m.margin_right/bifus_m.fig_width
+   bottom = bifus_m.margin_bottom/fig_height
+   top = 1-bifus_m.margin_top/fig_height
+   
+   wspace = 0.02
+   hspace = 0.02
+   
+   return [bifus_m.fig_width, fig_height, 
+           height_ratios, [1], left, right, bottom, top, wspace, hspace]
+
+def get_im_stretch(stretch):
+   ''' A function that returns a stretch, to feed the ImageNormalize routine from 
+      Astropy.
+   
+   :Args:
+      stretch: string
+               short, catchy name for the stretch I want.
+   
+   :Returns:
+      An astropy.visualization stretch thingy ...
+   
+   '''
+   
+   if stretch == 'arcsinh':
+      return astrovis.AsinhStretch()
+   elif stretch == 'linear':
+      return astrovis.LinearStretch()
+   else:
+      raise Exception('Stretch %s unknown.' % (stretch))
+    
+def get_im_interval(pmin = 10, pmax = 99.9, vmin=None, vmax=None):
+   ''' A function that returns a interval, to feed the ImageNormalize routine from 
+      Astropy.
+   
+   :Args:
+      pmin: float
+            lower-limit percentile
+      pmax: float
+            upper-limit percentile
+      vmin: float
+            absolute lower limit
+      vmax: float
+            absolute upper limit
+   
+   :Returns:
+      An astropy.visualization interval thingy ...
+   
+   :Notes:
+      Specifying vmin/vmax will override pmin/pmax
+   '''
+   
+   if not(vmin is None) and not (vmax is None):
+      
+      return astrovis.ManualInterval(vmin,vmax)
+   
+   else:
+      
+      return astrovis.AsymmetricPercentileInterval(pmin,pmax)
+
+def finetune_WCSAxes(im_ax):
+   ''' Fine-tune the look of WCSAxes plots to my liking.'''
+
+   # Make all bad pixels in 50% grey
+   #im_ax.set_nan_color((0.5,0.5,0.5))
+   # DOES NOT WORK -> former aplpy routine!   
+   
+   im_ax.set_facecolor((0.5,0.5,0.5))
+   
+   # Deal with the axes
+   ra = im_ax.coords[0]
+   dec = im_ax.coords[1]
+   
+   ra.set_major_formatter('hh:mm:ss')
+   dec.set_major_formatter('dd:mm:ss')
+   
+   ra.set_separator((r'$^{h}$',r'$^{m}$',r'$^{s}$'))
+   dec.set_separator((r'$^{\circ}$', r"$^{\prime}$", '$^{\prime\prime}$'))
+   
+   ra.display_minor_ticks(True)
+   dec.display_minor_ticks(True)
+   
+   im_ax.set_xlabel('R.A. [J2000]')
+   im_ax.set_ylabel('Dec. [J2000]', labelpad=0)
+   
+   return (ra,dec)
+
+# ---| Custom colormaps for brutifus |----------------------------------------------------
 # Here, I define the "alligator" colormap to give brutifus a unique feel just because I can. 
 # More importantly, I can decide to set the lower and upper bounds to B&W, so that spaxels
 # outside the colorbar range are directly identifiable. Also make sure that nan's show up 
 # in 50% grey. 
 
 # Alligator: 6 nodes with linear evolution, suitable for B&W impression
-
 cdict_alligator = {
 'red'  :  ( (0.00, 0./255, 0./255),
             (0.00, 0./255, 0./255),      (0.2, 20./255., 20./255.),
@@ -67,8 +165,25 @@ alligator = plt.matplotlib.colors.LinearSegmentedColormap('alligator',cdict_alli
 # Set the bad colors
 alligator.set_bad(color=(0.5,0.5,0.5), alpha=1) 
 
-# ----------------------------------------------------------------------------------------      
+# Define the inverse-cmap as well
+def reverse_colourmap(cdict):
+    new_cdict = {}
+    for channel in cdict:
+        data = []
+        for t in cdict[channel]:
+            data.append((1. - t[0], t[1], t[2]))
+        
+        new_cdict[channel] = data[::-1]
+    return new_cdict
 
+cdict_alligator_r = reverse_colourmap(cdict_alligator)
+alligator_r = plt.matplotlib.colors.LinearSegmentedColormap('alligator_r', 
+                                                            cdict_alligator_r, 1024) 
+# Set the bad colors
+alligator_r.set_bad(color=(0.5,0.5,0.5), alpha=1) 
+
+
+# ----------------------------------------------------------------------------------------      
 def make_galred_plot(lams, alams, etau, Ab, Av, ofn):
     ''' Plots the extinction Alambda and flux correction factor for galactic extinction.
     
@@ -142,17 +257,13 @@ def show_scale(ax, scale_length = 10.*u.arcsec, scale_text = None, scale_loc='to
 def make_2Dplot(fn, # path to the data (complete!)
                 ext = 1, # Which extension am I looking for ?
                 ofn = 'plot.pdf', # Savefig filename
-                contour_fn = None, # Draw any contours ?
-                contour_ext = 1, # What is the file extension ?
-                contour_levels = [None], # At what level ?
                 stretch = 'arcsinh',
                 vmin = None, 
                 vmax = None,
-                pmin = 0.25,
-                pmax = 99.75,
+                pmin = 10.0,
+                pmax = 99.99,
                 cmap = None,
                 cblabel = None,
-                cbticks = None,
                 scalebar = None,
                 ):
    '''Creates an image from a 2-D fits image with WCS info.
@@ -164,12 +275,6 @@ def make_2Dplot(fn, # path to the data (complete!)
           The extension of the image to display. The data in this extension MUST be 2-D.
       ofn: string [default:'plot.pdf']
           The output filename (+path!)
-      contour_fn: string,list of floats [default: None]
-          If set, shows contours from the given filename.
-      contour_ext: int [default: 1]
-          Which file extension to get the contour image from ?
-      contour_levels: list of floats [default: [None]]
-          If set, shows contours at said levels, e.g. [1,3,5,10.5]
       stretch: string [default:'arcsinh']
           The stretch of the image, fed to aplpy.FITSFigure. 'linear', 'arcsinh', ...
       vmin: float [default: None]
@@ -184,8 +289,6 @@ def make_2Dplot(fn, # path to the data (complete!)
           If set, the colormap to use. Use 'alligator' for the special brutifus cmap.
       cblabel: string [default:None]
           If set, the label of the colorbar.
-      cbticks: list of int [default: None]
-          If set, the colorbar ticks.
       scalebar: list [default: None]
           If set, adds a scale bar to the plot. Format: [lenght arcsec, length kpc, loc, unit]
             
@@ -196,111 +299,85 @@ def make_2Dplot(fn, # path to the data (complete!)
    :Notes:
       This function absolutely requires WCS coordinates, and a 2-D array.
    '''
-    
-   # Plot the BW image using the 2d image to indicate the projection
-   plt.close(1)
-   fig1 = plt.figure(1, figsize=(6.94,7))
    
-   # Try to use gridspec ... even if I still can't do it exactly how I want to ...
-   gs = gridspec.GridSpec(1,1, height_ratios=[1], width_ratios=[1],
-                       left=0.2, right=0.95, bottom=0.08, top=0.98, wspace=0.02, hspace=0.03)
-    
-   ax1 = aplpy.FITSFigure(fn, hdu=ext, figure=fig1, north=True, 
-                          subplot=list(gs[0,0].get_position(fig1).bounds))
-   '''
+   # Alright, let's start by computing the proper figure height, so that my plots all
+   # have the same ratio, irrespective of whether I have a colorbar, or not.
    
-   if cblabel:
-      ax1 = aplpy.FITSFigure(fn, hdu=ext, figure=fig1, north=True, 
-                              subplot=[0.22,0.12,0.7,0.87])
-   else:
-      ax1 = aplpy.FITSFigure(fn, hdu=ext, figure=fig1, north=True, subplot=[0.22,0.12,0.77,0.8])
-   '''
+   # First get the data
    
-   if cmap == 'alligator':
-        
-      ax1.show_colorscale(stretch=stretch, vmax = vmax, vmin=vmin, pmin=pmin, pmax=pmax,
-                            cmap=alligator, interpolation='nearest')
-   elif cmap:
-      ax1.show_colorscale(stretch=stretch, vmax = vmax, vmin=vmin, pmin=pmin,pmax=pmax,
-                          cmap=cmap, interpolation='nearest')
-   else:
-      ax1.show_grayscale(invert=True, stretch=stretch,vmax = vmax, vmin=vmin, pmin=pmin, 
-                         pmax=pmax,
-                         interpolation='nearest')
-   
-   # ------------------------------------------------------------------
-   # Here, let's make sure that the full extent of the plot is visible. 
-   # To do so, I need to open the file to know how big the array is. 
    hdu = fits.open(fn)
-   header = hdu[ext].header
    data = hdu[ext].data
+   header = hdu[ext].header
    hdu.close()
-
-   # What is the size of the map ?
+   
+   # What is the size of my image ?
    (ny,nx) = np.shape(data)
    
-   # What are the indices of the outermost spaxels ? These are the currents limits.
-   (ys,xs) = np.mgrid[0:ny:1,0:nx:1]
-    
-   xs = xs[data==data]
-   ys = ys[data==data]
+   # What is the associated fig dimensions I need ?
+   fig_dims = get_fig_dims(nx, ny)
    
-   xpix_min = np.sort(xs.reshape(np.size(xs)))[0]
-   xpix_max = np.sort(xs.reshape(np.size(xs)))[::-1][0]
-   ypix_min = np.sort(ys.reshape(np.size(ys)))[0]
-   ypix_max = np.sort(ys.reshape(np.size(ys)))[::-1][0] 
-    
-   # Ok, then, update the axis limits accordingly. 
-   # NOTE: this is via the matplotlib commands below aplpy, and works with pixels. I think.
-   # From my experiment it should also update the axes tick labels as required.
-   ax1._ax1.set_xlim(0.5-xpix_min,nx+0.5-xpix_min)
-   ax1._ax1.set_ylim(0.5-ypix_min,ny+0.5-ypix_min)
-   ax1._ax1.set_facecolor((0.5, 0.5, 0.5))
-   # ------------------------------------------------------------------
-   
-   ax1.set_nan_color((0.5,0.5,0.5))
-   ax1.set_tick_color('k')
- 
-   # Do I want to show contours ?
-   if not(contour_fn is None):
-      if not(os.path.isfile(contour_fn)):
-         raise Exception('Error: Unknown contour filename: %s' % contours)
-      if np.any(contour_levels is None):
-         raise Exception('Error: contour level is None')
-            
-      ax1.show_contour(contour_fn, hdu=contour_ext, levels=contour_levels, colors=['darkorange']) 
-
-   # Do I want to add a scalebar ?
-   if not(scalebar is None):
-      show_scale(ax1, scale_length = scalebar[0], scale_text = scalebar[1], 
-                 scale_loc = scalebar[2])
-    
-   # Make it look pretty
-   ax1.set_axis_labels(ylabel='Dec. (J2000)')
-   ax1.axis_labels.set_ypad(-15)
-   ax1.set_axis_labels(xlabel='R.A. (J2000)')
-   ax1.tick_labels.set_xformat('hh:mm:ss')
-   ax1.tick_labels.set_yformat('dd:mm:ss')
-   
-   if cblabel:
-      ax1.add_colorbar()
-      ax1.colorbar.show(location = 'top', width = 0.2, 
-                        #box = list(gs[0,0].get_position(fig1).bounds),
-                        box = None, 
-                        box_orientation = 'horizontal', axis_label_text = cblabel, 
-                        axis_label_rotation = None, axis_label_pad = 10)
-
-   if cbticks:
-      ax1.colorbar.set_ticks(cbticks)
-
-   # Save it
-   fig1.savefig(ofn)
-
+   # Let's create a plot, and forget about using aplpy
    plt.close(1)
-    
-   return True #(ofn, ax1, fig1)
+   fig = plt.figure(1, figsize = (fig_dims[0], fig_dims[1]))
+   
+   # Set the scene with gridspec
+   gs = gridspec.GridSpec(2,1, 
+                          height_ratios = fig_dims[2],
+                          width_ratios = fig_dims[3], 
+                          left = fig_dims[4], 
+                          right = fig_dims[5], 
+                          bottom = fig_dims[6], 
+                          top = fig_dims[7], 
+                          wspace = fig_dims[8], 
+                          hspace = fig_dims[9])
+   
+   ax1 = plt.subplot(gs[1,0], projection=WCS(header))
+   
+   # What is the colorscheme selected ?
+   if cmap == 'alligator':
+      mycmap = alligator
+   elif cmap == 'alligator_r':
+      mycmap = alligator_r
+   elif cmap is None:
+      mycmap = 'Greys'
+   else:
+      mycmap = cmap
+   
+   # What is the normalization ?
+   norm = astrovis.ImageNormalize(data, 
+                                  interval = get_im_interval(pmin = pmin, pmax = pmax,
+                                                             vmin = vmin, vmax = vmax),
+                                  stretch = get_im_stretch(stretch))
+   
+   # Plot the image
+   im = ax1.imshow(data, origin = 'lower', interpolation = 'nearest', cmap = mycmap,
+                   norm = norm)
+   
+   #ax.set_nan_color((0.5,0.5,0.5))
+   
+   # Make the axes look pretty
+   (ra,dec) = finetune_WCSAxes(ax1)
+   
+   # Deal with the colorbar
+   if not(cmap is None):
+      
+      ax0 = plt.subplot(gs[0,0])
+   
+      cb = plt.colorbar(cax = ax0, mappable=im, orientation='horizontal', 
+                        ticklocation = 'top')
+      cb.set_label(cblabel, labelpad = 10)
+      #cb.ax.xaxis.set_ticks_position('top')
+      ax0.tick_params(axis='x', which='major', pad = 5)
+      
+      # BUG: can't get the minor ticks working properly - turn them off for now
+      cb.ax.minorticks_off()
+   
+   
+   fig.savefig(ofn)
+   
+   return (fig, ax1, ofn)
+   
 # ----------------------------------------------------------------------------------------      
-
 def make_2Dvelplot(fn, # path to the data (complete!)
                    ext = 1, # Which extension am I looking for ?
                    ofn = 'plot.pdf', # Savefig filename
@@ -470,109 +547,114 @@ def make_2Dvelplot(fn, # path to the data (complete!)
     fig1.savefig(ofn, bbox_inches='tight')
     plt.close(1)
     return True
+    
 # ----------------------------------------------------------------------------------------  
-
-def make_RGBplot(fns, ofn, stretch = ['linear','linear','linear'], 
+def make_RGBplot(fns, ofn, 
+                 ext = [0,0,0],
+                 stretch = ['linear','linear','linear'], 
                  plims = [0.25, 99.75, 0.25,99.75, 0.25, 99.75], 
                  vlims = [None, None, None, None, None, None],
                  title = None,
                  scalebar = None,
                 ):
-    '''Creates an RGB image from three fits files.
-    
-    :Args:
-        fn: list strings
-            The filename (+path!) fo the  3 fits file to display (in R, G and B orders).
-        ofn: string
-            The filneame (+path) of the output file.
-        stretch: list of string 
-                 The stretch to apply to the data, e.g. 'linear', 'log', 'arcsinh'.
-        plims: list of floats [default: [None, None, None, None, None, None]]
-               The limiting percentiles for the plot, as 
-               [pmin_r, pmax_r, pmin_g, pmax_g, pmin_b, pmax_b]
-        vlims: list of floats [default: [None, None, None, None, None, None]]
-               The limtiing values for the plot (superseeds plims), as
-               [vmin_r, vmax_r, vmin_g, vmax_g, vmin_b, vmax_b]
-        scalebar: list [default: None]
-            If set, adds a scale bar to the plot. Format: [lenght arcsec, length kpc, loc, unit]    
-
-    :Returns:
-        out: True
-             Always.
-    :Notes:
-        This function absolutely requires WCS coordinates, and a 2-D array.
-    '''  
-    
-    if type(stretch) == type('a'):
-        stretch = [stretch,stretch,stretch]
-    
-    # First, make an RGB cube
-    fn_RGB = os.path.join('.','RGB_tmp_cube.fits')
-    aplpy.make_rgb_cube(fns, fn_RGB)
-                          
-    # And an RGB image
-    fn_RGB_im = os.path.join('.','RGB_tmp_im.png')
-    aplpy.make_rgb_image(fn_RGB, fn_RGB_im, 
-                         stretch_r=stretch[0],
-                         stretch_g=stretch[1],
-                         stretch_b=stretch[2],
-                         vmin_r = vlims[0], 
-                         vmin_g = vlims[2], 
-                         vmin_b = vlims[4],
-                         vmax_r = vlims[1], 
-                         vmax_g = vlims[3], 
-                         vmax_b = vlims[5], 
-                         pmin_r = plims[0],
-                         pmax_r = plims[1],
-                         pmin_g = plims[2],
-                         pmax_g = plims[3],
-                         pmin_b = plims[4],
-                         pmax_b = plims[5],
-                         embed_avm_tags = False, make_nans_transparent=True)
-
-    # Plot the RGB image using the 2d image to indicate the projection
-    plt.close(1)
-    fig1 = plt.figure(1, figsize=(6.94,7))
-  
-    fn_RGB_2d = os.path.join('.','RGB_tmp_cube_2d.fits')
-    if title is None:
-        ax1 = aplpy.FITSFigure(fn_RGB_2d, figure=fig1, subplot=[0.2,0.12,0.75,0.8])
-    else:
-        ax1 = aplpy.FITSFigure(fn_RGB_2d, figure=fig1, subplot=[0.2,0.12,0.75,0.8])
-    
-    ax1.show_rgb(fn_RGB_im, interpolation='nearest')
-
-    ax1.set_tick_color('k')
- 
-    if not(title is None):
-        ax1.set_title(title, y=1.025)
- 
-    # Make it look pretty
-    ax1.set_nan_color((0.5,0.5,0.5))
-    ax1._ax1.set_facecolor((0.5, 0.5, 0.5))
-
-     # Do I want to add a scalebar ?
-    if not(scalebar is None):
-        show_scale(ax1, scale_length = scalebar[0], scale_text = scalebar[1],
-                   scale_loc = scalebar[2])
+   '''Creates an RGB image from three fits files.
    
-    # Make it look pretty
-    ax1.set_axis_labels(ylabel='Dec. [J2000]',ypad=-15)
-    ax1.set_axis_labels(xlabel='R.A. [J2000]')
-    ax1.tick_labels.set_xformat('hh:mm:ss')
-    ax1.tick_labels.set_yformat('dd:mm:ss')
+   :Args:
+      fns: list of strings
+           The filename (+path!) fo the  3 fits file to display (in R, G and B orders).
+      ofn: string
+           The filneame (+path) of the output file.
+      ext: int, or list of int
+           What HDU extension to read ?
+      stretch: list of string 
+               The stretch to apply to the data, e.g. 'linear', 'log', 'arcsinh'.
+      plims: list of floats [default: [None, None, None, None, None, None]]
+            The limiting percentiles for the plot, as 
+            [pmin_r, pmax_r, pmin_g, pmax_g, pmin_b, pmax_b]
+      vlims: list of floats [default: [None, None, None, None, None, None]]
+            The limtiing values for the plot (superseeds plims), as
+            [vmin_r, vmax_r, vmin_g, vmax_g, vmin_b, vmax_b]
+      title: string
+            Title to display above the image
+      scalebar: list [default: None]
+                If set, adds a scale bar to the plot. Format: [lenght arcsec, length kpc, loc, unit]    
+
+   :Returns:
+      out: True
+             Always.
+   '''  
     
-    # Save it
-    fig1.savefig(ofn)
-    #fig1.show()
-    # And remember to delete all the temporary files
-    for f in [fn_RGB_im, fn_RGB_2d, fn_RGB]:
-        os.remove(f)    
+   # If I was given a single stretch for all images, enlarge it
+   if type(stretch) == np.str:
+      stretch = [stretch,stretch,stretch]
+   
+   # If I was given a single extension, assume it is the same everywhere
+   if type(ext) == np.int:
+      ext = [ext,ext,ext]
+   
+   # Open the data and headers
+   data = [] 
+   header = []
+   
+   for (f,fn) in enumerate(fns):
+      hdu = fits.open(fn)
+      
+      # Get the data
+      this_data = hdu[ext[f]].data
+      
+      # Normalize it
+      this_data = get_im_interval(pmin = plims[2*f], pmax = plims[2*f+1], 
+                                  vmin = vlims[2*f], vmax = vlims[2*f+1])(this_data)
+      
+      # Stretch it
+      this_data = get_im_stretch(stretch[f])(this_data)
+      
+      data += [this_data]
+      header += [hdu[ext[f]].header]
+   
+    # What is the size of my images ?
+   (ny,nx) = np.shape(data[0])
+   
+   # What is the associated fig dimensions I need ?
+   fig_dims = get_fig_dims(nx, ny)
+   
+   # Let's create a plot, and forget about using aplpy
+   plt.close(1)
+   fig = plt.figure(1, figsize = (fig_dims[0], fig_dims[1]))
+   
+   # Set the scene with gridspec
+   gs = gridspec.GridSpec(2,1, 
+                          height_ratios = fig_dims[2],
+                          width_ratios = fig_dims[3], 
+                          left = fig_dims[4], 
+                          right = fig_dims[5], 
+                          bottom = fig_dims[6], 
+                          top = fig_dims[7], 
+                          wspace = fig_dims[8], 
+                          hspace = fig_dims[9])
+   
+   ax1 = plt.subplot(gs[1,0], projection = WCS(header[0]))
+   
+   im = ax1.imshow(np.transpose(np.array(data), (1,2,0)), 
+                   origin = 'lower', 
+                   interpolation = 'nearest', zorder = 0)
+   
+   
+   # Assume an astro image, and set the ticks to white
+   ax1.tick_params(axis='both', which='both', color='w', direction='in')
+   
+   # Make the axes look pretty
+   (ra,dec) = finetune_WCSAxes(ax1)
+   
+   
+   if not(title is None):
+      ax1.set_title(title)
+
+   fig.savefig(ofn)
         
-    return (ofn, ax1, fig1)
+   return True #(ofn, ax1, fig1)
 
 # ----------------------------------------------------------------------------------------  
-
 class ApManager(object):
     ''' The class managing the interactive aperture selection plot.
     
