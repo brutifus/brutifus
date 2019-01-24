@@ -13,6 +13,9 @@ TODO:
    - allow an automated selection of the sky areas -> requires a better snr estimate ?
    - allow to abort the continuum fitting with CTRL-C
 
+v2019.01.1: F.P.A. Vogt
+ - revived the reddening module
+
 v2018.11.1: F.P.A. Vogt
  - added the 'raw_cube' name to fn_list for easy access
 

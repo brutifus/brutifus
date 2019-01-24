@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 '''
 brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
-Copyright (C) 2018,  F.P.A. Vogt
+Copyright (C) 2018-2019,  F.P.A. Vogt
 
 -----------------------------------------------------------------------------------------
 
 This file contains some global metadata used throughout the brutifus code.
 
-Created November 2018, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
+Created November 2018-2019, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
 '''
 # ----------------------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 # ---| Some basic parameters |------------------------------------------------------------
 
-__version__ = '2018.11.1'
+__version__ = '2019.01.1'
 
 # Where are we located ?
 bifus_dir = os.path.dirname(__file__) # Get the project directory from the file location!

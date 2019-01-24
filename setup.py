@@ -2,7 +2,7 @@ from setuptools import setup, find_packages  # Always prefer setuptools over dis
 
 setup(
    name='brutifus',
-   version='2018.11.1',
+   version='2019.01.1',
    author='F.P.A. Vogt',
    author_email='frederic.vogt@alumni.anu.edu.au',
    packages=['brutifus',],
@@ -13,12 +13,12 @@ setup(
    long_description=open('README').read(),
    python_requires='>=3',
    install_requires=[
-      "numpy >= 1.14.3",
+      "numpy >= 1.14.2",
       "scipy >= 1.1.0",
       "matplotlib >= 3.0.0",
       "astropy >=3.0",
       "aplpy >=1.1.1",
-      "astroquery >= 0.3.4",
+      "statsmodels >=0.9.0",
    ],
     
    classifiers=[

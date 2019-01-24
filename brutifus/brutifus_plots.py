@@ -122,8 +122,8 @@ def finetune_WCSAxes(im_ax):
    ra.set_major_formatter('hh:mm:ss')
    dec.set_major_formatter('dd:mm:ss')
    
-   ra.set_separator((r'$^{h}$',r'$^{m}$',r'$^{s}$'))
-   dec.set_separator((r'$^{\circ}$', r"$^{\prime}$", '$^{\prime\prime}$'))
+   ra.set_separator((r'$^{\text{h}}$', r'$^{\text{m}}$', r'$^{\text{s}}$ '))
+   dec.set_separator((r'$^{\circ}$', r'$^{\prime}$', r'$^{\prime\prime}$'))
    
    ra.display_minor_ticks(True)
    dec.display_minor_ticks(True)
@@ -222,9 +222,9 @@ def make_galred_plot(lams, alams, etau, Ab, Av, ofn):
     
     ax2.tick_params(axis='y',colors='firebrick')
     ax2.spines['right'].set_color('firebrick')
-    ax2.grid(True, c='firebrick')
+    #ax2.grid(True, c='firebrick')
     
-    ax.grid(True)
+    #ax.grid(True)
     
     ax.set_title(r'Galactic extinction correction')
     
@@ -652,7 +652,7 @@ def make_RGBplot(fns, ofn,
 
    fig.savefig(ofn)
         
-   return True #(ofn, ax1, fig1)
+   return (fig, ax1, ofn)
 
 # ----------------------------------------------------------------------------------------  
 class ApManager(object):

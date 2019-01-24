@@ -66,7 +66,7 @@ from . import brutifus_tools as bifus_t
 from . import brutifus_cof as bifus_cof
 from . import brutifus_elf
 from . import brutifus_plots as bifus_p
-from . import brutifus_red
+from . import brutifus_red as bifus_red
 from . import brutifus_metadata as bifus_m
 from .brutifus_metadata import __version__
 
@@ -411,7 +411,7 @@ def run_sky_sub(fn_list, params, suffix = None, name_in = None, name_out = None)
                                          ofn = ofn,
                                          stretch = 'linear',
                                          pmin = 5,
-                                         pmax = 80,
+                                         pmax = 95,
                                          )
    
    # Show all the sky spaxels
@@ -458,15 +458,16 @@ def run_sky_sub(fn_list, params, suffix = None, name_in = None, name_out = None)
         
    
    return fn_list
+   
 # ----------------------------------------------------------------------------------------
-  
-def run_gal_dered(fn_list, params, suffix = None, do_plot = False):
-    '''Corrects for Galactic extinction, given the Ab and Av extinction.
-    
-    This function erives the Alambda value for any wavelength, and corrects the data to
-    correct for our "local" extinction. Intended for extragalactic sources.
-    
-    :Args:
+def run_gal_dered(fn_list, params, suffix = None, do_plot = False,
+                  name_in = None, name_out = None):
+   '''Corrects for Galactic extinction, given the Ab and Av extinction.
+   
+   This function derives the Alambda value for any wavelength, and corrects the data to
+   correct for our "local" extinction. Intended for extragalactic sources.
+   
+   :Args:
       fn_list: dictionary
                The dictionary containing all filenames created by brutifus.
       params: dictionary
@@ -475,81 +476,70 @@ def run_gal_dered(fn_list, params, suffix = None, do_plot = False):
               The tag of this step, to be used in all files generated for rapid id.
       do_plot: bool [default: True]
                Whether to make a plot of the Alambda correction applied or not.
-
-    :Returns:
-        fn_list: dictionary
-                 The updated dictionary of filenames. 
+      name_in: string
+               name tag to identify which cube to use to run the routine
+      name_out: string
+               name tag to identify which cube comes out of the routine
+   :Returns:
+      fn_list: dictionary
+               The updated dictionary of filenames. 
                  
-    :Notes:
+   :Notes:
         To reproduce the approach from NED, use the Ab and Av value for you object from 
-        there, and set curve='f99', rv=3.1.   
-    '''
+        there, and set curve='f99', rv=3.1 in the params file.   
+   '''
     
-    raise Exception('Check and update this function!!!')
+   if params['verbose']:
+      print('-> Correcting for Galactic extinction.')
     
-    if params['verbose']:
-        print('-> Correcting for Galactic extinction.')
+   # Get the data
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list[name_in],params['inst'])
     
-    # Import the raw data 
-    hdu = fits.open(os.path.join(params['data_loc'],params['data_fn']))
-    header0 = hdu[0].header
-    data = hdu[1].data
-    header1 = hdu[1].header
-    error = hdu[2].data
-    header2 = hdu[2].header
-    hdu.close()
-    
-    # Build the wavelength array
-    lams = np.arange(0, header1['NAXIS3'],1) * header1['CD3_3'] + header1['CRVAL3']
-    
-    # Compute Alambda
-    alams = brutifus_red.alam(lams, params['Ab'],params['Av'], curve=params['gal_curve'],
+   # Compute Alambda
+   alams = bifus_red.alam(lams, params['Ab'],params['Av'], curve=params['gal_curve'],
                            rv=params['gal_rv'])
     
-    # Compute the flux correction factor
-    etau = brutifus_red.galactic_red(lams,params['Ab'],params['Av'], 
-                                  curve=params['gal_curve'],
-                                  rv=params['gal_rv'])
+   # Compute the flux correction factor
+   etau = bifus_red.galactic_red(lams,params['Ab'],params['Av'], 
+                                 curve=params['gal_curve'],
+                                 rv=params['gal_rv'])
     
-    # Correct the data and the propagate the errors
-    data *= etau[:, np.newaxis, np.newaxis]
-    error *= (etau[:, np.newaxis, np.newaxis])**2
+   # Correct the data and the propagate the errors
+   data *= etau[:, np.newaxis, np.newaxis]
+   error *= (etau[:, np.newaxis, np.newaxis])**2
     
-    # Save the datacubes
-    hdu0 = fits.PrimaryHDU(None,header0)
-    
-    hdu1 = fits.ImageHDU(data)
-    hdu2 = fits.ImageHDU(error)
+   # Save the datacubes
+   hdu0 = fits.PrimaryHDU(None,header0)
+   hdu1 = fits.ImageHDU(data)
+   hdu2 = fits.ImageHDU(error)
         
-    for hdu in [hdu1,hdu2]:
-        # Make sure the WCS coordinates are included as well
-        hdu = brutifus_tools.hdu_add_wcs(hdu,header1)
-        hdu = brutifus_tools.hdu_add_lams(hdu,header1)
-        # Also include a brief mention about which version of brutifus is being used
-        hdu = brutifus_tools.hdu_add_brutifus(hdu,suffix)
-        # Add the line reference wavelength for future references
-        hdu.header['BR_AB'] = (params['Ab'], 'Extinction in B')
-        hdu.header['BR_AV'] = (params['Av'], 'Extinction in V')
+   for hdu in [hdu1,hdu2]:
+      # Make sure the WCS coordinates are included as well
+      hdu = bifus_t.hdu_add_wcs(hdu, header_data)
+      hdu = bifus_t.hdu_add_lams(hdu, header_data)
+      # Also include a brief mention about which version of brutifus is being used
+      hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
+      # Add the line reference wavelength for future references
+      hdu.header['BR_AB'] = (params['Ab'], 'Extinction in B')
+      hdu.header['BR_AV'] = (params['Av'], 'Extinction in V')
             
-            
-    hdu = fits.HDUList(hdus=[hdu0,hdu1,hdu2])
-    fn_out = os.path.join(params['prod_loc'],
-                              suffix+'_'+params['target']+'_galdered.fits')
-    hdu.writeto(fn_out, overwrite=True)
+   # Add the filename to the dictionary of filenames
+   fn_list[name_out] = os.path.join(params['prod_loc'], 
+                                    suffix+'_'+params['target']+'_gal-dered_cube.fits')
+                                        
+   hdu = fits.HDUList(hdus=[hdu0,hdu1,hdu2])
+   hdu.writeto(fn_list[name_out], overwrite=True)
         
-    # Add the filename to the dictionary of filenames
-    fn_list['galdered_cube'] = suffix+'_'+params['target']+'_galdered.fits'
-    
-    # Do I want to save a plot ?
-    if do_plot:
-        ofn = os.path.join(params['plot_loc'],suffix+'_'+params['target']+
+   # Do I want to save a plot ?
+   if do_plot:
+      ofn = os.path.join(params['plot_loc'],suffix+'_'+params['target']+
                             '_gal_Alambda_corr.pdf')
-        bifus_p.make_galred_plot(lams,alams,etau,params['Ab'],params['Av'], ofn)
+      bifus_p.make_galred_plot(lams,alams,etau,params['Ab'],params['Av'], ofn)
     
-    return fn_list
+   return fn_list
     
 # ----------------------------------------------------------------------------------------
-
 def run_fit_continuum(fn_list, params, suffix=None, name_in = None,
                       start_row = None, end_row = None,
                       method='lowess'):
@@ -682,9 +672,11 @@ def run_fit_continuum(fn_list, params, suffix=None, name_in = None,
       # until I re-build the entire cube later on. It also allows for better 
       # row-by-row flexibility.
       
+      print(' ') # Need this to deal with the stdout mess
+      
       if not(os.path.isdir(params['tmp_loc'])):
-         print(' ! Requested storage location does not exist. Creating it ...')
-         print(' %s' % params['tmp_loc'])
+         print('   !Requested storage location does not exist! Creating it ...')
+         print('    => %s' % params['tmp_loc'])
          os .mkdir(params['tmp_loc'])
       
       fn = os.path.join(params['tmp_loc'],
@@ -697,7 +689,7 @@ def run_fit_continuum(fn_list, params, suffix=None, name_in = None,
    # And add the generic pickle filename to the dictionary of filenames
    fn_list[method+'_pickle'] = suffix+'_'+params['target']+'_'+method+'_row_'
         
-   print(' fitting completed !')
+   print('   Fitting completed !')
     
    return fn_list
    
@@ -780,7 +772,7 @@ def run_make_continuum_cube(fn_list, params, suffix=None,
                                           suffix+'_'+params['target']+'_'+method+'.fits')
    hdu.writeto(fn_list[method+'_cube'], overwrite=True)
     
-   print(' ') # Required toc lear the stdout stuff
+   print(' ') # Required to clear the stdout stuff
     
    return fn_list
 

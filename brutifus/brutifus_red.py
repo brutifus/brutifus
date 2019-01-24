@@ -135,7 +135,7 @@ def fd05_elvebv(lams, rv = 3.08, rva = 4.3): # lams in Angstroem
               The wavelengths at which to evaluate the attenutation.
         rv: float [default: 3.08]
             The Rv value, following Fischera & Dopita.
-        rva: float [default: 4.5]
+        rva: float [default: 4.3]
              The Rva value, following Fischera & Dopita.
     
     :Returns:
@@ -289,7 +289,7 @@ def ccm89_alav(lams, rv): # lams in Angstroem
     return alav
 # ---------------------------------------------------------------------------------------- 
 
-def alam(lams, ab, av, curve='f99', rv=None, rva=4.5):
+def alam(lams, ab, av, curve='f99', rv=None, rva=4.3):
     '''Calculate the value of A_lambda for different extinction/attenuation laws.
     
     :Args:
@@ -340,7 +340,7 @@ def alam(lams, ab, av, curve='f99', rv=None, rva=4.5):
         return ccm89_alav(lams,rv)*av      
 # ---------------------------------------------------------------------------------------- 
 
-def galactic_red(lams, ab, av, curve='f99', rv = 3.1, rva = 4.3):
+def galactic_red(lams, ab, av, curve='f99', rv = None, rva = 4.5):
     '''Calculate the galactic extinction for a given sight-line, using Ab and Av.
     
     :Args:
@@ -367,7 +367,7 @@ def galactic_red(lams, ab, av, curve='f99', rv = 3.1, rva = 4.3):
         'cal00*' includes a 0.44 correction factor to derive the stellar extinction.
         
     '''
-    tau = alam(lams,ab,av,curve=curve,rv=rv) * (2.5*np.log10(np.e))**-1
+    tau = alam(lams,ab,av,curve=curve,rv=rv, rva=rva) * (2.5*np.log10(np.e))**-1
           
     return np.exp(tau)
 # ---------------------------------------------------------------------------------------- 
