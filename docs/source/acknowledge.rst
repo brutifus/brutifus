@@ -1,11 +1,14 @@
-
+.. |DOI_latest| image:: https://zenodo.org/badge/157203434.svg
+   :target: https://zenodo.org/badge/latestdoi/157203434
+   
 Acknowledging brutifus
 ======================
 
-Only use lower case letters when mentioning brutifus, and always include the release number, 
+Only use lower case letters when mentioning brutifus, and always include the release number.
+Ideally, you should also include a) the DOI associated with any of the Github releases, 
 e.g.:
 
-    brutifus |release|  
+    brutifus |release|: |DOI_latest|
 
 brutifus uses several packages that **should also be acknowledged in their own right.** 
 The following Tex-formatted acknowledgment is one way to do so::
@@ -14,8 +17,8 @@ The following Tex-formatted acknowledgment is one way to do so::
     from integral field spectrographs hosted at \url{http://fpavogt.github.io/brutifus/}. 
     \textsc{brutus} relies on \textsc{statsmodel} (Seabold & Perktold 2010),
     \textsc{matplotlib} (Hunter 2007), \textsc{astropy}, a community-developed core Python 
-    package for Astronomy (Astropy Collaboration et al., 2013, 2018), \textsc{photutils}, an affiliated package of 
-    \textsc{astropy} for photometry (DOI:10.5281/zenodo.2533376).
+    package for Astronomy (Astropy Collaboration et al., 2013, 2018), \textsc{photutils}, 
+    an affiliated package of \textsc{astropy} for photometry (DOI:10.5281/zenodo.2533376).
 
 Finally, you also ought to cite the following works, depending on your use of brutifus:
 

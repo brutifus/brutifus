@@ -19,6 +19,7 @@ v2019.02.2: F.P.A. Vogt
  - fixed all docstrings
  - cleaned up code of all old brutus bits not (yet) ported to brutifus. 
  - started working on documentation 
+ - first public release!
 
 v2019.02.1: F.P.A. Vogt
  - added run_BWplot step
