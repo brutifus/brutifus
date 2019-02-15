@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 '''
 brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
-Copyright (C) 2018  F.P.A. Vogt
+Copyright (C) 2018-2019  F.P.A. Vogt
 
 -----------------------------------------------------------------------------------------
  
@@ -22,11 +22,19 @@ import brutifus.brutifus_metadata as bifus_m
 
 
 # ---| Toggle on-off all the different processing steps to be run |-----------------------
-# This list effectively defines the "recipe to be run by brutifus. In practice, it should be
-# flexible, and could/should be adaptable to anyone's specific needs.
+# This list effectively defines the "recipes" to be run by brutifus. In practice, it should 
+# be flexible, and could/should be adaptable to anyone's specific needs.
 
 proc_steps = [
-
+   
+   # Correct the WCS values to check with Gaia.
+   {'step':'adjust_WCS', 'run':True, 'suffix':'00',
+    'args':{'name_in':'raw_cube',
+            'name_out':'wcs-corr_cube', 
+            'pmin': 10.0, # pmin for the plot
+            'pmax': 99.0, # pmax for the plot
+           },
+   },
    # First, compute some S/N maps for the continuum and emission lines of interest ...
    {'step':'crude_snr_maps', 'run':False, 'suffix':'01', 
     'args':{'name_in':'raw_cube', # What cube do I want to process ?
@@ -94,115 +102,52 @@ proc_steps = [
             'conts':[[[6470,6500],None,[5350,5390]],],
             },
    },
+   # Make some BW plots ...
+   {'step':'plot_BW', 'run':True, 'suffix':'11', 
+    'args':{'name_in':'galdered_cube', # What cube do I want to plot ?
+            'stretches':['linear','linear', 'linear', 'linear'],
+            'stretch_plims': [[0.5,99.9],
+                             ],
+            'stretch_vlims': [[None]*2,
+                             ],
+            'gauss_blurs':[None,
+                           ],
+            'bands':[[6556,6579],
+                    ],
+            'conts':[[6356,6379],
+                     ],
+            },
+   },
+   
    # ----- Emission line fitting --------------------------------------------------------
-   # Let's move on to emission line fitting.
-   #{'step':'fit_elines', 'run':False, 'suffix':'07',
-   # 'args':{'start_row':0, # Where to start the fitting ? None = 0
-   #         'end_row':None, # Where to end the fitting ? None = max
-   #        },
-   #},
-   # Construct a datacube with the emission line parameters, using the output of the 
-   # previous step
-   #{'step':'make_elines_cube', 'run':False, 'suffix':'08',
-   # 'args':{},
-   #},
-   # Make some pretty plots for the emission lines fitting
-   #{'step':'plot_elines_cube', 'run':False, 'suffix':'09',
-   # 'args':{'vrange':[7210,7400], # Velocity range in km/s for the colorbar 
-   #         'sigrange':[40,60], # Dispersion range in m/s for the colorbar
-   #        }, 
-   #},
+   # TBD ...
+   
    # ----- Fit inspection ---------------------------------------------------------------
    # Interactive window displaying the fit, and comparison between the different 
    # continuum removal.
-   {'step':'inspect_fit','run':False, 'suffix':'10',
-    'args':{'irange':[1,1e4], 
-            'vrange':[7200,7400],
-           },
-   },
+   #{'step':'inspect_fit','run':False, 'suffix':'10',
+   # 'args':{'irange':[1,1e4], 
+   #         'vrange':[7200,7400],
+   #        },
+   #},
+   
    # ----- Structures and apertures business --------------------------------------------
-   # Detect structures automatically and possibly refine the selection manually
-   #{'step':'find_structures', 'run':False, 'suffix':'11',
-   # 'args':{'automatic_mode':True, # Detect structures automatically ?
-   #         'interactive_mode':True, # Refine structure selection manually ?
-   #        },
-   #},
-   # Extract the integrated spectra in the apertures, and save as a new cube
-   #{'step':'make_ap_cube', 'run':False, 'suffix':'12',
-   # 'args':{'do_plot':True,
-   #        },
-   #},
-   # Now, you probably want to re-process this aperture file, right ? 
-   # I suggest to not add extra steps below, but rather create a dedicated copy of
-   # brutifus_params.py, and treat the aperture cube as a new cube.
-   # This approach is much less invasive, and somewhat more elegant. After all, the 
-   # aperture cube is build to be processed on a spaxel-by-spaxel basis ! It's somewhat
-   # time consuming, but you'll have to live with it for now.
+   # TBD ...
    
    # ----- Emission line analysis -------------------------------------------------------
-   # Now, correct for the extragalactic reddening of the spectra, using Ha and Hb
-   #{'step':'extragal_dered', 'run':False, 'suffix':'13',
-   # 'args':{'do_plot':True},
-   #},
-   # 
-   # Fit the kinematic PA using M. Cappellari's routine
-   #{'step':'fit_kinematic_pa', 'run':False, 'suffix':'14',
-   # 'args':{'do_plot':True,
-   #         'vrange':[7210,7400],
-   #        },
-   #},
    # Compute the electron density from the [SII] line ratio
    #{'step':'get_ne', 'run':False, 'suffix':'15',
    # 'args':{'do_plot':True,
    #         'ratio_range':[0.4,1.4],
    #        },
    #},
-   # Derive the oxygen abundance and ionization parameters using pyqz 
-   # (pyqz = separate install)
-   #{'step':'get_QZ', 'run':False, 'suffix':'16',
-   # 'args':{'start_row':0,  # Where to start the fitting ? None = 0
-   #         'end_row':None, # Where to end the fitting ? None = max
-   #        },
-   #},
-   # Construct the cube from all the pyqz outputs 
-   #{'step':'make_QZ_cube', 'run':False, 'suffix':'17',
-   # 'args':{'do_plot': True,
-   #        },
-   #},
-   # Compute the oxygen abundance gradient
-   #{'step':'plot_O_gradient', 'run':False, 'suffix':18,
-   # 'args':{},
-   #},
-   # Compute the star formation rate
-   #{'step':'get_SFR', 'run':False, 'suffix':'19',
-   # 'args':{'do_plot':True,},
-   #},
-   # Plot some RGB images of the different emission lines
-   #{'step':'plot_elines_RGB', 'run':False, 'suffix':'20',
-   # 'args':{'mixes':[['[NII]','Ha','[OIII]'],['[SII]+','[NII]','[OIII]'],], 
-   #         'stretches': ['log','log'],
-   #         'stretch_plims': [[10.,99.5,10.,99.5,10.,99.5],
-   #                           [10.,99.5,10.,99.5,10.,99.5]],
-   #         'stretch_vlims': [[None,None,None,None,None,None],
-   #                           [None,None,None,None,None,None]],
-   #         'use_egal_dered':False,
-   #        },
-   #},
-   # Plot some emission flux line ratio maps
-   #{'step':'plot_flux_ratio', 'run':False, 'suffix':'21',
-   # 'args':{'ratios':['[NII]/[OIII]','[SII]+/[NII]'],
-   #         'vrange':[[None,None],[None,None]],
-   #         'use_egal_dered':True,
-   #        },
-   #},
    ]
     
 
 # ---| Set up the scene, get the params, etc ... |----------------------------------------
-
 start_time = datetime.datetime.now()
 
-# --- | Use argparse to make brutifus user friendly |---------------------------------------
+# --- | Use argparse to make brutifus user friendly |-------------------------------------
 parser = argparse.ArgumentParser(description='''High-level recipe handling the processing
                                                 of IFU datacubes. ''',
                                  epilog =' Full documentation: %s \n \n \
@@ -221,7 +166,6 @@ parser.add_argument('--no-systemtex', action='store_true',
 # Get all the supplied arguments
 args = parser.parse_args()
 
-
 # Check that I was fed some parameters
 if args.params is None:
    raise Exception('Failed to load the pickled parameter file. Have you supplied any?')
@@ -235,10 +179,9 @@ else:
    bifus_m.usetex = True
    bifus_m.plotstyle = os.path.join(bifus_m.bifus_dir,'mpl_styles',
                                          'brutifus_plots.mplstyle')
-
+                                         
+# Set the chosen plot style
 plt.style.use(bifus_m.plotstyle)
-# I don't like this next line too much ... but failed to find a better way!
-#fcm_p.reload() 
 
 # Load the parameter file
 f = open(args.params, 'rb')
@@ -261,7 +204,6 @@ if not(os.path.isfile(fn)):
    f.close()
 
 # ---| Execute the recipe, by calling all the individual master step functions | ---------
-
 prev_suffix = None
 for step in proc_steps:
    step_name   = step['step']
@@ -293,4 +235,4 @@ for step in proc_steps:
 duration = datetime.datetime.now() - start_time
 print('All done in %.01f seconds.' % duration.total_seconds())
  
-# ---| End of the World as we know it |-------------------------------
+# ---| End of the World as we know it |---------------------------------------------------

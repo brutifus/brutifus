@@ -1,5 +1,5 @@
-brutifus
-========
+The functions of brutifus
+=========================
 
 .. toctree::
    :maxdepth: 4

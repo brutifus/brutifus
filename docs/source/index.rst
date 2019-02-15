@@ -1,52 +1,64 @@
-.. brutifus documentation master file, created by
-   sphinx-quickstart on Fri Apr 22 11:23:38 2016.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. brutifus documentation master file
+
+.. |DOI_latest| image:: https://zenodo.org/badge/119476467.svg
+   :target: https://zenodo.org/badge/latestdoi/119476467
+
+.. |ascl| image:: https://img.shields.io/badge/ascl-1806.027-blue.svg?colorB=262255
+   :target: http://ascl.net/1806.027
+
+.. |pypi| image:: https://img.shields.io/pypi/v/brutifus.svg?colorB=<brightgreen>
+    :target: https://pypi.python.org/pypi/brutifus/
+    
+.. |last-commit| image:: https://img.shields.io/github/last-commit/fpavogt/brutifus.svg?colorB=e6c000
+   :target: https://github.com/fpavogt/brutifus
+
+.. |issues| image:: https://img.shields.io/github/issues/fpavogt/brutifus.svg?colorB=b4001e   
+   :target: https://github.com/fpavogt/brutifus/issues
+
+.. |astropy| image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
+    :target: http://www.astropy.org/
+   
+.. |stars| image:: https://img.shields.io/github/stars/fpavogt/brutifus.svg?style=social&label=Stars
+   :target: https://github.com/fpavogt/brutifus/
+
+.. |watch| image:: https://img.shields.io/github/watchers/fpavogt/brutifus.svg?style=social&label=Watch
+   :target: https://github.com/fpavogt/brutifus/
+   
+   
+.. |github| image:: https://img.shields.io/github/release/fpavogt/brutifus.svg
+   :target: https://github.com/fpavogt/brutifus/releases   
+
 
 brutifus |release|
 ==================
 
-.. warning::
-   These pages describe brutifus |release|. The module is currently under construction, and 
-   NOT yet ready for deployment. For more information, send an email to 
-   frederic.vogt@alumni.anu.edu.au.
+|pypi| |astropy| |last-commit| 
 
+brutifus is a set of Python routines designed to post-process datacubes from Integral Field 
+Spectrographs, and in particular MUSE and WiFeS. The spirit of brutifus is to deal with 
+*generic* post-processing tasks with as little interactions as possible. 
 
-brutifus is a set of Python routines designed to process datacubes from Integral Field 
-Spectrographs, and in particular MUSE on the VLT/UT-4 at Paranal Observatory. **The focus 
-of brutifus is primarily set on performing a detailed emission line analysis of supernova
-remnants.**
+So far, brutifus allows to:
 
-Some of the features of brutifus include:
-
-  - **the direct use of reduced datacubes** (e.g. produced from the official MUSE data reduction 
-    pipeline) without requiring prior modifications,
-  - **the fitting of the stellar/nebular continuum** using either a non-parametric Locally 
-    Weighted Scatterplot Smoothing (LOWESS) technique,
-  - **the fitting of emission lines** via ``mpfit`` that uses the Levenberg-Marquardt technique 
-    to solve the least-squares problem, 
-  - the ability to use **a varying number of gaussian components** for different emission 
-    lines, tie parameters to one another, and set upper and lower bounds,
-  - **an automated routine for identifying structures in the data** and 
-    define associated extraction apertures, with the ability to then refine the selection 
-    interactively,
-  - **a modular structure** (inspired by 
-    `pywifes <http://pywifes.github.io/pipeline/>`_; `Childress+, 2014 
-    <http://adsabs.harvard.edu/abs/2014Ap%26SS.349..617C>`_) allowing users to choose 
-    specific processing steps, or add their own with minimal efforts, and
-
-
-brutifus can use up to ``ny`` cpus at once (where ``nx*ny`` is the number of spaxels in the
-datacube; ``ny~300`` for one MUSE cube) to speed up the processing of large datasets. 
-
-.. note::
-
-    You can track the latest changes in the code via the `associated Github repository 
-    <https://github.com/fpavogt/brutus>`_.
+  - **correct a cube WCS solution** using Gaia,
+  - **generate B&W and RGB images from the cube**,
+  - **correct for the galactic reddening along the line of sight**,
+  - **fit the stellar/nebular continuum** using the non-parametric Locally Weighted 
+    Scatterplot Smoothing (LOWESS) technique,
+  - **perform an ad-hoc sky-subtraction** if required.  
     
-    See also the :ref:`changelog` for a global overview.
-    
+brutifus is modular: `execution` files allow the user to specify which recipe is to be 
+executed, and in which order. Wherever feasible/beneficial, brutifus routines can use up 
+to ``ny`` cpus at once (where ``nx*ny`` is the number of spaxels in the datacube; 
+``ny~300`` for a MUSE cube) to speed up the processing of large datasets. 
 
+.. note:: brutifus is very much a work in progress. Modules and recipes will get added as 
+          the need arises. The code is released publicly because I believe in an open
+          Science policy. 
+          
+          You're welcome to try it out ... so long as you remember that the code comes with 
+          no warranty! 
+          
 Contents
 ------------------
 .. toctree::

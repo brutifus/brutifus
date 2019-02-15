@@ -7,22 +7,15 @@ e.g.:
 
     brutifus |release|  
 
-
 brutifus uses several packages that **should also be acknowledged in their own right.** 
 The following Tex-formatted acknowledgment is one way to do so::
 
     This research has made use of \textsc{brutifus}, a Python module to process data cubes 
     from integral field spectrographs hosted at \url{http://fpavogt.github.io/brutifus/}. 
     \textsc{brutus} relies on \textsc{statsmodel} (Seabold & Perktold 2010),
-    \textsc{matplotlib} (Hunter 2007), \textsc{astropy}, a community-developed core Python package for Astronomy (Astropy Collaboration et al., 2013, 2018), \textsc{photutils}, an affiliated package of 
-    \textsc{astropy} for photometry, \textsc{aplpy}, an open-source plotting package for 
-    Python (Robitaille 2012), \textsc{montage}, funded by the 
-    National Science Foundation under Grant Number ACI-1440620 and previously funded by 
-    the National Aeronautics and Space Administration’s Earth Science Technology Office, 
-    Computation Technologies Project, under Cooperative Agreement Number NCC5-626 between 
-    NASA and the California Institute of Technology, and \textsc{mpfit}, a Python script 
-    that uses the Levenberg-Marquardt technique (Moré 1978) to solve least-squares 
-    problems, based on an original Fortran code part of the \textsc{minpack}-1 package.
+    \textsc{matplotlib} (Hunter 2007), \textsc{astropy}, a community-developed core Python 
+    package for Astronomy (Astropy Collaboration et al., 2013, 2018), \textsc{photutils}, an affiliated package of 
+    \textsc{astropy} for photometry (DOI:10.5281/zenodo.2533376).
 
 Finally, you also ought to cite the following works, depending on your use of brutifus:
 
@@ -72,23 +65,6 @@ References:
  
  - `Fischera & Dopita (2005) <http://adsabs.harvard.edu/abs/2005ApJ...619..340F>`_
  - `Hunter (2007) <http://cdsads.u-strasbg.fr/abs/2007CSE.....9...90H>`_    
- - Moré (1978)::
- 
-    @inbook{more1978,
-        author={Mor{\'e}, Jorge J.},
-        editor={Watson, G. A.},
-        chapter={The Levenberg-Marquardt algorithm: Implementation and theory},
-        title={Numerical Analysis: Proceedings of the Biennial Conference 
-               Held at Dundee, June 28--July 1, 1977},
-        year={1978},
-        publisher={Springer Berlin Heidelberg},
-        address={Berlin, Heidelberg    },
-        pages={105--116},
-        isbn={978-3-540-35972-2},
-        doi={10.1007/BFb0067700},
-        url={http://dx.doi.org/10.1007/BFb0067700}
-    }
-    
  - Seabold & Perktold (2010)::
  
     @inproceedings{seabold2010,

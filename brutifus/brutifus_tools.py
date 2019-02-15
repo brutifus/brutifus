@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 '''
  brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
- Copyright (C) 2018,  F.P.A. Vogt
+ Copyright (C) 2018-2019,  F.P.A. Vogt
  
  -----------------------------------------------------------------------------------------
  
- This file contains general tools for the brutifus routines to fit the stellar continuum and 
- the emission lines in an IFU data cube.
+ This file contains general tools for the brutifus routines to fit the stellar continuum 
+ and the emission lines in an IFU data cube.
 
  Created November 2018, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
 '''
@@ -69,7 +69,7 @@ def nearest_2dpoint(point, points):
    
    :param point: 1x2 array with x, y coord
    :type point: numpy array
-   :param points: nx2 array with x, y coords
+   :param points: Nx2 array with x, y coords
    :type points: numpy array
    
    :return: the min distance, the delta-x and delta-y, and the closest point
@@ -83,7 +83,7 @@ def nearest_2dpoint(point, points):
 
 # ----------------------------------------------------------------------------------------       
 def init_worker():
-   '''Handles KeyboardInterrupt during multiprocessing.
+   ''' Handles KeyboardInterrupt during multiprocessing.
    
    .. note:: See https://noswap.com/blog/python-multiprocessing-keyboardinterrupt
    
@@ -92,17 +92,14 @@ def init_worker():
 # ----------------------------------------------------------------------------------------      
   
 def hdu_add_brutifus(hdu,procstep):
-   '''Adds dedicated brutifus keywords to a FITS file header.
+   ''' Adds dedicated brutifus keywords to a FITS file header.
     
-   :Args:
-      hdu: FITS hdu
-           The destination hdu to which the brutifus keywords must be added.
-      procstep: string
-                The name of the processing step creating the FITS file.
+   :param hdu: The destination hdu to which the brutifus keywords must be added.
+   :param procstep: The name of the processing step creating the FITS file.
+   :type procstep: str
+   
+   :return: The newheader with brutifus info included.  
     
-   :Returns:
-      out: FITS header
-           The newheader with brutifus info included.   
    '''
     
    hdu.header['BRUTIFUS'] = (version, 'brutifus version')
@@ -113,20 +110,15 @@ def hdu_add_brutifus(hdu,procstep):
 # ----------------------------------------------------------------------------------------      
   
 def hdu_add_wcs(newhdu,refheader):
-   '''Adds the WCS coordinates from a reference header to a new hdu.
+   ''' Adds the WCS coordinates from a reference header to a new hdu.
     
-   :Args:
-      newheader: FITS hdu
-                 The destination hdu to which the WCS keywords must be added.
-      refheader: FITS header
-                 The reference header, from which to transer the WCS keywords.
+   :param newheader: The destination hdu to which the WCS keywords must be added.
+   :param refheader: The reference header, from which to transer the WCS keywords.
     
-   :Returns:
-      out: FITS hdu
-           The new hdu with WCS info included.   
-   :Notes:
-      Keywords transfered are  'CRPIX1', 'CD1_1', 'CTYPE1', 'CUNIT1', 'CRPIX2', 'CD2_2',
-      'CTYPE2', 'CUNIT2', 'CD1_2', 'CD2_1', 'CRVAL1' and 'CRVAL2'.
+   :return: The new hdu with WCS info included. 
+     
+   .. note:: Keywords transfered are  'CRPIX1', 'CD1_1', 'CTYPE1', 'CUNIT1', 'CRPIX2', 
+             'CD2_2', 'CTYPE2', 'CUNIT2', 'CD1_2', 'CD2_1', 'CRVAL1' and 'CRVAL2'.
    '''
     
    newhdu.header['CRPIX1'] = refheader['CRPIX1']
@@ -146,20 +138,15 @@ def hdu_add_wcs(newhdu,refheader):
 # ----------------------------------------------------------------------------------------      
     
 def hdu_add_lams(newhdu,refheader):
-   '''Adds the wavelength information from a reference header to a new hdu.
+   ''' Adds the wavelength information from a reference header to a new hdu.
     
-   :Args:
-      newhdu: FITS hdu
-              The destination hdu to which the wavelength keywords must be added.
-      refheader: FITS header
-                 The reference header, from which to transer the wavelength keywords.
+   :param newhdu: The destination hdu to which the wavelength keywords must be added.
+   :param refheader: The reference header, from which to transer the wavelength keywords.
     
-   :Returns:
-      out: FITS hdu
-           The newheader with wavelength info included.   
-   :Notes:
-      Keywords transfered are 'CTYPE3', 'CUNIT3', 'CD3_3', 'CRPIX3', 'CRVAL3', 'CD1_3', 
-      'CD2_3', 'CD3_1' and 'CD3_2'.
+   :return: FITS HDU, the newheader with wavelength info included. 
+     
+   .. note:: Keywords transfered are 'CTYPE3', 'CUNIT3', 'CD3_3', 'CRPIX3', 'CRVAL3', 
+             'CD1_3', 'CD2_3', 'CD3_1' and 'CD3_2'.
    '''
     
    newhdu.header['CTYPE3'] = refheader['CTYPE3'] 
@@ -175,61 +162,55 @@ def hdu_add_lams(newhdu,refheader):
    return newhdu    
  
 # ----------------------------------------------------------------------------------------
-
-def inst_resolution(inst = 'MUSE', get_ff = False, show_plot=False):
-    '''Returns the functional resolution of an instrument as a function of the wavelength.
+def inst_resolution(inst = 'MUSE', get_ff = False, show_plot = False):
+   ''' Returns the functional resolution of an instrument as a function of the wavelength.
     
-    Returns a callable function of the wavelength (in Angstroem !).
+   Returns a callable function of the wavelength (in Angstroem !).
     
-    :Args:
-        inst: string [default: 'MUSE']
-              The name tag referring to a given instrument.
-        get_ff: bool [default: False]
-                Whether to recompute the given function from a reference dataset or not.
-                Only valid with inst = 'MUSE'.
-        show_plot: bool [default: False]
-                   Whether to make a plot of the function.
+   :param inst: The name tag referring to a given instrument.
+   :type inst: str
+   :param get_ff: Whether to recompute the given function from a reference dataset or not.
+                  Only valid with inst = 'MUSE'.
+   :type get_ff: bool
+   :param show_plot: Whether to make a plot of the function.
+   :type show_plot: bool
+   
+   :return: A function that takes a float (lambda in Angstroem), and returns the 
+            corresponding value of the chosen instrument resolution.
+   :rtype: func
     
-    :Returns:
-        R(lambda): function
-                   A function that takes a float (lambda in Angstroem, and returns the 
-                   corresponding value of the chosen instrument resolution.
+   .. note:: Supported instruments: 'MUSE'
     
-    :Notes:
-        Supported instruments: 'MUSE'
-    
-    '''
+   '''
      
-    if inst == 'MUSE':
-       if get_ff:
-          this_fn_path = os.path.dirname(__file__)
-          ref_fn = 'MUSE_specs/MUSE_spectral_resolution.txt'
-          R_lam = np.loadtxt(os.path.join(this_fn_path,ref_fn),
-                           skiprows = 1)
+   if inst == 'MUSE':
+      if get_ff:
+         this_fn_path = os.path.dirname(__file__)
+         ref_fn = 'MUSE_specs/MUSE_spectral_resolution.txt'
+         R_lam = np.loadtxt(os.path.join(this_fn_path,ref_fn), skiprows = 1)
                            
-          # Fit a polynomial to this. Deg 3 works well.
-          z = np.polyfit(R_lam[:,0]*10.,R_lam[:,1],3)
-          p = np.poly1d(z)
+         # Fit a polynomial to this. Deg 3 works well.
+         z = np.polyfit(R_lam[:,0]*10.,R_lam[:,1],3)
+         p = np.poly1d(z)
           
-          if show_plot:
-             plt.close(99)
-             plt.figure(99)
+         if show_plot:
+            plt.close(99)
+            plt.figure(99)
              
-             lams = np.arange(4500,10000.,1)
+            lams = np.arange(4500,10000.,1)
              
-             plt.plot(lams,p(lams), 'b-')            
-             plt.plot(R_lam[:,0]*10.,R_lam[:,1], 'k.')
+            plt.plot(lams,p(lams), 'b-')            
+            plt.plot(R_lam[:,0]*10.,R_lam[:,1], 'k.')
              
-             plt.show()
+            plt.show()
           
-       else:
-           #Fit on 02.2016:
-           p = np.poly1d([ -8.27037043e-09, 1.40175196e-04, -2.83940026e-01, 7.13549344e+02])
+      else:
+         #Fit on 02.2016:
+         p = np.poly1d([ -8.27037043e-09, 1.40175196e-04, -2.83940026e-01, 7.13549344e+02])
            
-       return p    
+      return p    
                     
-    else:
-        sys.exit('Unknown instrument...') 
+   else:
+      raise Exception('Unknown instrument...') 
  
- 
-        
+# ---------------------------------------------------------------------------------------- 

@@ -3,19 +3,24 @@
 Changelog
 =========
 
-TODO:
+.. todo::
+   - (!) allow to abort the continuum fitting with CTRL-C
    - `run_crude_snr_maps`: compute proper S/N for bright stars (not <>/std !)
-   - enable minorticks to plots (see astropy bug [8126](https://github.com/astropy/astropy/issues/8126))
-   - set the color of NaN pixels in plots ... (see astropy bug [8165](https://github.com/astropy/astropy/issues/8165))
+   - enable minorticks in colorbars (see astropy bug `[8126] <https://github.com/astropy/astropy/issues/8126>`_)
+   - set the color of NaN pixels in plots ... (see astropy bug `[8165] <https://github.com/astropy/astropy/issues/8165>`_)
    - check that white ticks appear in RGB images with imshow
-   - allow `run_plot_RGB` to plot RGB or single plane files (easy now without aplpy)
    - when drawing contours in `run_skysub()`, show the actual pixel edges
    - allow an automated selection of the sky areas -> requires a better snr estimate ?
-   - allow to abort the continuum fitting with CTRL-C
-   
    - (?) add scalebar to plots ... tricky: what if pix scale not uniform, North not up, etc ...
+   - (?) only load ``Gaia`` from astroquery if we need it, to avoid the need for the internet when it is nopt needed.
 
 v2019.02.2: F.P.A. Vogt
+ - added photutils to the list of required packages
+ - fixed all docstrings
+ - cleaned up code of all old brutus bits not (yet) ported to brutifus. 
+ - started working on documentation 
+
+v2019.02.1: F.P.A. Vogt
  - added run_BWplot step
  - aded WCS correction step
  - worked a bit on refactoring the docstrings

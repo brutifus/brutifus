@@ -20,26 +20,10 @@ brutifus.brutifus\_cof module
     :undoc-members:
     :show-inheritance:
 
-brutifus.brutifus\_elf module
------------------------------
-
-.. automodule:: brutifus.brutifus_elf
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 brutifus.brutifus\_metadata module
 ----------------------------------
 
 .. automodule:: brutifus.brutifus_metadata
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-brutifus.brutifus\_mpfit module
--------------------------------
-
-.. automodule:: brutifus.brutifus_mpfit
     :members:
     :undoc-members:
     :show-inheritance:
