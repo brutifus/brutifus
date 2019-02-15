@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 '''
 brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
- Copyright (C) 2018,  F.P.A. Vogt
+Copyright (C) 2018,  F.P.A. Vogt
  
- -----------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------
  
- This file contains several function and tools used by the brutifus routines to correct
- emission line fluxes for galactic and extragalactic reddening.
+This file contains several function and tools used by the brutifus routines to correct
+emission line fluxes for galactic and extragalactic reddening.
 
- Created November 2018, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
+Created November 2018, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
 '''
 # ----------------------------------------------------------------------------------------
 

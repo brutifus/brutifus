@@ -1,8 +1,8 @@
 
-Running brutus
+Running brutifus
 ===================
 
-The spirit of brutus is that each user can choose, depending on the object at hand & the
+The spirit of brutifus is that each user can choose, depending on the object at hand & the
 quality of the data, what processing steps are warranted. These are governed by the
 ``brutus_execute.py`` file. In parallel, the user can define all relevant parameters using
 the ``brutus_params.py`` file. 
@@ -11,7 +11,7 @@ For each project, I suggest making a local copy of both files, while leaving an 
 copy at ``brutus/exec_scripts/`` for safekeeping. 
 
 
-Setting parameters with ``brutus_params.py``
+Setting parameters with ``brutifus_params.py``
 --------------------------------------------
 
 All parameters (with a scientific role) relevant to the brutus functions can be specified
@@ -31,7 +31,7 @@ This exports all the parameters to the pickle file ``pickle_fn``, defined in
 ``brutus_params.py``.  
 
 
-Launching the post-processing with ``brutus_execute.py``
+Launching the post-processing with ``brutifus_execute.py``
 --------------------------------------------------------
 
 brutus is designed to batch process all the individual spectra inside a given IFU 

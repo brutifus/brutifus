@@ -5,13 +5,20 @@ Changelog
 
 TODO:
    - `run_crude_snr_maps`: compute proper S/N for bright stars (not <>/std !)
-   - add scalebar to plots
    - enable minorticks to plots (see astropy bug [8126](https://github.com/astropy/astropy/issues/8126))
+   - set the color of NaN pixels in plots ... (see astropy bug [8165](https://github.com/astropy/astropy/issues/8165))
    - check that white ticks appear in RGB images with imshow
    - allow `run_plot_RGB` to plot RGB or single plane files (easy now without aplpy)
    - when drawing contours in `run_skysub()`, show the actual pixel edges
    - allow an automated selection of the sky areas -> requires a better snr estimate ?
    - allow to abort the continuum fitting with CTRL-C
+   
+   - (?) add scalebar to plots ... tricky: what if pix scale not uniform, North not up, etc ...
+
+v2019.02.2: F.P.A. Vogt
+ - added run_BWplot step
+ - aded WCS correction step
+ - worked a bit on refactoring the docstrings
 
 v2019.01.1: F.P.A. Vogt
  - revived the reddening module

@@ -26,13 +26,13 @@ from . import brutifus_metadata as bifus_m
 def extract_cube(fn,inst):
    ''' Extracts the data and error associated with a given datacube.
    
-   :Args: 
-      fn: relative path to file
-      inst: string
-            Name of the instrument that took the data
+   :param fn: relative path to file
+   :type fn: string
+   :param inst: Name of the instrument that took the data
+   :type inst: string
    
-   :Returns:
-      [[lams,data,error], [header0, header_data, header_error]]
+   :return: [[lams,data,error], [header0, header_data, header_error]]
+   :rtype: list
    
    '''
    
@@ -63,13 +63,30 @@ def extract_cube(fn,inst):
    
    return [[lams,data,error], [header0, header_data, header_error]]
  
-# ----------------------------------------------------------------------------------------      
-  
+# ----------------------------------------------------------------------------------------  
+def nearest_2dpoint(point, points):
+   ''' Returns the nearest neighbor from a bung of points, and the distance
+   
+   :param point: 1x2 array with x, y coord
+   :type point: numpy array
+   :param points: nx2 array with x, y coords
+   :type points: numpy array
+   
+   :return: the min distance, the delta-x and delta-y, and the closest point
+   :rtype: list
+   
+   '''
+   
+   dist_2 = np.sum((points - point)**2, axis = 1)
+   min_id = np.argmin(dist_2)
+   return (np.sqrt(dist_2[min_id]), points[min_id] - point, points[min_id])
+
+# ----------------------------------------------------------------------------------------       
 def init_worker():
    '''Handles KeyboardInterrupt during multiprocessing.
    
-   :Notes:
-      See https://noswap.com/blog/python-multiprocessing-keyboardinterrupt
+   .. note:: See https://noswap.com/blog/python-multiprocessing-keyboardinterrupt
+   
    '''
    signal.signal(signal.SIGINT, signal.SIG_IGN)
 # ----------------------------------------------------------------------------------------      

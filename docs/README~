@@ -1,6 +1,6 @@
 To generate all the function docs automatically, use
 
-sphinx-apidoc -f -o source/modules/ ../brutifus/
+sphinx-apidoc —f -o source/modules/ ../brutifus/
 
 and change the title in modules.rst to “The functions of brutifus”
 

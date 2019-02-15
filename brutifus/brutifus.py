@@ -42,6 +42,12 @@ import glob
 
 import numpy as np
 
+
+from matplotlib import MatplotlibDeprecationWarning
+#warnings.filterwarnings("error",category=MatplotlibDeprecationWarning)
+import matplotlib.gridspec as gridspec 
+import matplotlib.pyplot as plt
+
 from astropy.io import fits
 from astropy.utils.exceptions import AstropyDeprecationWarning
 from astropy.io.fits.verify import VerifyWarning
@@ -53,13 +59,22 @@ log.setLevel('WARNING') # Disable pesky INFO flags from aplpy
 #warnings.filterwarnings("error", category=AstropyDeprecationWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
+# Also filter stupid GAIA warnings
+warnings.filterwarnings("ignore", module='astropy.io.votable.tree')
 
-from matplotlib import MatplotlibDeprecationWarning
-#warnings.filterwarnings("error",category=MatplotlibDeprecationWarning)
-import matplotlib.gridspec as gridspec 
-import matplotlib.pyplot as plt
 from astropy.visualization import (PercentileInterval, AsymmetricPercentileInterval,
                                    AsinhStretch, LinearStretch, ImageNormalize)
+import astropy.units as u
+from astropy.coordinates.sky_coordinate import SkyCoord
+from astropy.units import Quantity
+from astropy.stats import sigma_clipped_stats
+from astropy.wcs import WCS
+from astropy.time import Time
+
+from astroquery.gaia import Gaia
+
+from photutils import DAOStarFinder
+from photutils import CircularAperture
 
 # Import brutifus-specific tools
 from . import brutifus_tools as bifus_t
@@ -70,6 +85,235 @@ from . import brutifus_red as bifus_red
 from . import brutifus_metadata as bifus_m
 from .brutifus_metadata import __version__
 
+# ---------------------------------------------------------------------------------------- 
+def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = None, 
+                   pmin = 10., pmax = 99.0, max_offset = 5.):
+   ''' Queries Gaia to check the WCS validity.
+   
+   :param fn_list: The dictionary containing all filenames created by brutifus.
+   :type fn_list: dict
+   :param params:  The dictionary containing all paramaters set by the user. 
+   :type params: dict
+   :param suffix: The tag of this step, to be used in all files generated for rapid id.
+   :type suffix: string
+   :param name_in: name tag to identify which cube to use to run the routine 
+   :type name_in: string
+   :param name_out: name tag to identify which cube comes out of the routine
+   :type name_out: string
+   :param pmin: lower percentile for the plot
+   :type pmin: float
+   :param pmax: upper percentile for the plot
+   :type pmax: float
+   :param max_offset: max offset between GAIA and the data ... in PIXELS!!!
+   :type max_offset: float 
+   
+   
+   :return: The updated dictionary of filenames.
+   :rtype: dictionary
+   
+   .. note:: Proper motions for the GAIA entries are propagated to the DATE-OBS of the data.
+             Source identification in white-light image based on :class:`photutils.DAOStarFinder`
+             
+   .. todo:: This routine only works if the correct match is the closest neighbor. 
+             It needs to be reinforced in case of large offsets (and/or crowded fields).
+   
+   '''
+   
+   if params['verbose']:
+      print('-> Adjusting the cube WCS using Gaia.')
+   
+   # Get the data
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list[name_in],params['inst'])
+   
+   # Build a white-light image
+   wl_im = np.nansum(data, axis=0)
+   
+   # Get some of the statistics on this image
+   wl_mean, wl_median, wl_std = sigma_clipped_stats(wl_im, sigma=3.0) 
+   
+   if params['verbose']:
+      print('   Looking for stars in the field ...')
+      
+   # Source: https://photutils.readthedocs.io/en/stable/detection.html   
+   # Get ready to look for stars in there
+   daofind = DAOStarFinder(fwhm = 3.0, threshold = 5. * wl_std) 
+   
+   # Start the search
+   sources = daofind(wl_im - wl_median) 
+   
+   # Create a list of sources in RA-Dec ?
+   sources_list =  np.array([sources['xcentroid'],sources['ycentroid']])
+   
+   # Reshape this properly as Nx2
+   sources_list = sources_list.T
+   
+   # Save this 2D white-light image 
+   hdu0 = fits.PrimaryHDU(None, header0)
+   hdu1 = fits.ImageHDU(wl_im)
+   # Make sure the WCS coordinates are included as well
+   hdu1 = bifus_t.hdu_add_wcs(hdu1, header_data)
+   # Also include a brief mention about which version of brutifus is being used
+   hdu1 = bifus_t.hdu_add_brutifus(hdu1, suffix)
+      
+   # Write the file!
+   hdu = fits.HDUList(hdus = [hdu0, hdu1])
+   
+   fn_list['white_light'] = os.path.join(params['prod_loc'], 
+                                         suffix+'_'+params['target']+'_white_light.fits') 
+   hdu.writeto(fn_list['white_light'], overwrite = True)
+   
+   # Store the 2D WCS info for later
+   wcs2d = WCS(hdu1)
+                                       
+   # Query Gaia, and show the marker location on the plot. 
+   # First get the field "center" and radius
+   if params['inst'] == 'MUSE':
+      # For MUSE, assume the data is always of the same format (because it is).
+      core_coord = SkyCoord(ra=header_data['CRVAL1'], dec=header_data['CRVAL2'],
+                            unit =(u.deg, u.deg), frame='icrs')
+      search_radius = 0.75 * max([np.abs(header_data['NAXIS1'] * header_data['CD1_1']*u.deg),
+                                np.abs(header_data['NAXIS2'] * header_data['CD2_2']*u.deg)])
+   else:
+      raise Exception('Ouch! ... instrument not yet supported?!')
+   
+   if params['verbose']:
+      print('   Querying GAIA ...')
+   
+   # Make it a sync search, because I don't think I need more than 2000 targets ...
+   j = Gaia.cone_search_async(core_coord, search_radius, verbose = False)
+   r = j.get_results()
+   
+   if len(r)>= 2000:
+      warnings.warn('   Maximum number of GAIA entries returned. Some stars might be missing.') 
+   
+   # Some of these proper motions are NaN's ... need to deal with this before feeding them to 
+   # SkyCoord
+   r['pmra'].fill_value = 0
+   r['pmdec'].fill_value = 0
+
+   # Turn this into a "catalogue" of SkyCoord
+   gaia_cat = SkyCoord(ra=r['ra'], dec=r['dec'], unit=(u.deg, u.deg), frame='icrs',
+                       pm_ra_cosdec = r['pmra'].filled(),
+                       pm_dec = r['pmdec'].filled(),
+                       obstime = [Time(item, format='decimalyear') for item in r['ref_epoch']],
+                       equinox = 'J2000',
+                       distance = 1.e3 * u.pc, # Assumes the default distance
+                       )
+   
+   # Propagate Gaia to the observation date!
+   gaia_cat = gaia_cat.apply_space_motion(new_obstime = Time(header0['DATE-OBS'])) 
+   
+   # Clean this up, to only show the points within the image
+   gaia_cat = gaia_cat[wcs2d.footprint_contains(gaia_cat)]
+   
+   # Transform this in pixel coords
+   gaia_cat_pix = wcs2d.wcs_world2pix(gaia_cat.ra,gaia_cat.dec, 0)
+   
+   # Reshape it properly
+   gaia_cat_pix = np.array(gaia_cat_pix).T
+   
+   # Now, loop through each point, find the closest neighbor
+   dxys = []
+   for source in sources_list:
+      (this_d, this_delta, this_neighbor) = bifus_t.nearest_2dpoint(source,gaia_cat_pix)
+      
+      if this_d <= max_offset:
+         dxys += [this_delta.tolist()]
+   
+   dxys = np.array(dxys)
+   
+   # Ok, for finding the best possible offsets, I have a lot of choice. 
+   # Assuming I have enough points, let's just take the median along x and along y.
+   
+   dx = np.median(dxys[:,0])
+   dy = np.median(dxys[:,1])
+   
+   # Let's make a plot to show how good I'm doing with getting a reasonable offset
+   plt.close(99)
+   fig99 = plt.figure(99, figsize = (6.94,7))
+   
+   gs = gridspec.GridSpec(1,1, 
+                          height_ratios = [1],
+                          width_ratios = [1], 
+                          left = 0.12, right = 0.98, 
+                          bottom = 0.12, top = 0.9, 
+                          wspace = 0.1, hspace = 0.1)
+   
+   ax99 = plt.subplot(gs[0,0])  
+   
+   ax99.scatter(dxys[:,0],dxys[:,1],marker='.', color='k')
+   ax99.axvline(dx)
+   ax99.axhline(dy)
+   
+   ax99.set_xlim((-1.2*max_offset, 1.2*max_offset))
+   ax99.set_ylim((-1.2*max_offset, 1.2*max_offset))
+   
+   circle = plt.Circle((0, 0), max_offset, facecolor='none', edgecolor='k')
+   ax99.add_artist(circle)
+   ax99.set_aspect('equal')
+   ax99.set_xlabel('Delta x [pix]')
+   ax99.set_ylabel('Delta y [pix]')
+   ax99.set_title('Max. search radius: %.1f pixels' % (max_offset))
+   
+   fig99.savefig(os.path.join(params['plot_loc'], suffix + '_' + params['target'] + 
+                                                           '_get-WCS-offsets.pdf'))
+   plt.close(99)
+   
+   # Very well, now apply the corrections!
+   # First to the white-light image
+   fits.setval(fn_list['white_light'], 'CRPIX1', value = hdu1.header['CRPIX1'] - dx, ext=1)
+   fits.setval(fn_list['white_light'], 'CRPIX2', value = hdu1.header['CRPIX2'] - dy, ext=1)
+   
+   # Then also to the fixed datacube
+   hdu0 = fits.PrimaryHDU(None, header0)
+   hdu1 = fits.ImageHDU(data)
+   hdu2 = fits.ImageHDU(error)
+        
+   for hdu in [hdu1,hdu2]:
+      # Make sure the WCS coordinates are included as well
+      hdu = bifus_t.hdu_add_wcs(hdu, header_data)
+      hdu = bifus_t.hdu_add_lams(hdu, header_data)
+      # Also include a brief mention about which version of brutifus is being used
+      hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
+      
+      # And update the WCS value
+      hdu.header['CRPIX1'] = hdu.header['CRPIX1'] - dx
+      hdu.header['CRPIX2'] = hdu.header['CRPIX2'] - dy
+      
+   # Add the filename to the dictionary of filenames
+   fn_list[name_out] = os.path.join(params['prod_loc'], 
+                                    suffix+'_'+params['target']+'_wcs-corr.fits')
+   hdu = fits.HDUList(hdus=[hdu0, hdu1, hdu2])  
+   hdu.writeto( fn_list[name_out], overwrite=True)
+   
+   # Plot the white-light image to show how good I am doing ...
+   (fig, ax, ofn) = bifus_p.make_2Dplot(fn_list['white_light'], ext = 1, 
+                                        ofn = os.path.join(params['plot_loc'],
+                                                           suffix + '_' + params['target'] + 
+                                                           '_check-WCS.pdf'),
+                                       pmin = pmin, pmax = pmax,
+                                       cmap = None, 
+                                       cblabel = None,
+                                       #scalebar = params['scalebar'],
+                                       )   
+   
+   # And add them to the plot
+   ax.scatter(gaia_cat.ra, gaia_cat.dec, marker=bifus_p.crosshair(pa=45), color='darkorange', 
+              s=100, 
+              transform=ax.get_transform('world'))
+   # ax.scatter(gaia_cat_pix[0], gaia_cat_pix[1], marker='+', color='darkorange', s=50)
+   
+   # Show the stars I found in the data ... these are in pix coordinates ...
+   # -> always "right" irrespective of the WCS!
+   ax.scatter(sources['xcentroid'], sources['ycentroid'], color='crimson', s = 50, 
+              marker = 'o', facecolor = 'none')
+                    
+   # Save the updated plot
+   fig.savefig(ofn)                               
+                                    
+   return fn_list
+   
 # ---------------------------------------------------------------------------------------- 
 def run_crude_snr_maps(fn_list, params, suffix = None, name_in = None, do_plot = False, 
                        zcorr_lams = False):
@@ -221,15 +465,106 @@ def run_crude_snr_maps(fn_list, params, suffix = None, name_in = None, do_plot =
                              scalebar = params['scalebar'],
                             )                                         
    return fn_list
+
+# ---------------------------------------------------------------------------------------- 
+def run_plot_BW(fn_list, params, suffix=None, 
+                name_in = None,
+                bands = [[7500.,9300.],], 
+                conts = [None,],
+                stretches = ['arcsinh',],
+                stretch_plims = [[10.,99.5],],
+                stretch_vlims = [[None,None],],
+                gauss_blurs = [None,]
+               ):   
+   ''' 
+   This function is designed to make some B&W images from slices in the cube.
+    
+   :Args:
+      fn_list: dictionary
+               The dictionary containing all filenames created by brutifus.
+      params: dictionary
+              The dictionary containing all paramaters set by the user. 
+      suffix: string [default: None]
+              The tag of this step, to be used in all files generated for rapid id.
+      name_in: string
+               name tag to identify which cube to use to run the routine
+      bands: list of list of list [default: [[7500,9300],],
+           A list of wavelength pairs.
+      conts: list of list of list [default: [[None,None],],
+             A list of wavelength pairs channels associated continuum regions.         
+      stretches: list of string [default: ['arcsinh']]
+                 The stretches to apply to the data, e.g. 'linear', 'log', 'arcsinh'.
+      stretch_plims: list of list of floats [default: [[10.,99.5],]
+                     The limiting percentiles for the plot
+      stretch_vlims: list of list of floats [default: [[10.,99.5],]]
+                     The limiting values for the plot (superseeds stretch_plims)
+      gauss_blurs: list of scalars
+                   Radius of gaussian blur, None for nothing
+             
+   :Returns:
+      fn_list: dictionary
+               The updated dictionary of filenames. 
+   ''' 
+    
+   # First, I need to generate 3 individual fits files for each band
+   if params['verbose']:
+      print('-> Creating some B&W images.')
+    
+   # Get the data
+   [[lams, data, error], [header0, header_data, header_error]] = \
+      bifus_t.extract_cube(fn_list[name_in],params['inst'])
    
+   # Step 1: Construct individual images for each band
+   for (i,band) in enumerate(bands):
+        
+      # get the data out
+      scidata = data[(lams>=band[0])*(lams<=band[1]),:,:]
+      # Get the continuum
+      if not(conts[i] is None):
+         contdata = data[(lams>=conts[i][0])*(lams<=conts[i][1]),:,:]   
+      else:
+         contdata = 0
+         
+      # Subtract the continuum          
+      scidata = np.sum(scidata,axis=0) - np.sum(contdata, axis=0)
+         
+      fn = os.path.join(params['plot_loc'],'BW_tmp.fits')
+      hdu = fits.PrimaryHDU(scidata)
+      # Add the wcs info
+      hdu = bifus_t.hdu_add_wcs(hdu, header_data)
+      outfits = fits.HDUList([hdu])
+      outfits.writeto(fn,overwrite=True)
+            
+        
+      ofn = os.path.join(params['plot_loc'], suffix+'_'+params['target']+'_'+name_in+
+                         '_BW_%i-%i.pdf' % (band[0],band[0]))
+                                                                             
+      # Great, I am now ready to call the plotting function
+      bifus_p.make_2Dplot(fn, ext = 0, ofn = ofn, 
+                           stretch = stretches[i],
+                           pmin = stretch_plims[i][0],
+                           pmax = stretch_plims[i][1],
+                           vmin = stretch_vlims[i][0],
+                           vmax = stretch_vlims[i][1],
+                           gauss_blur = gauss_blurs[i],
+                           cmap = None,
+                           #title = r'\smaller %s-%s\,\AA\' % (band[0],band[1]),
+                           scalebar = params['scalebar'])
+    
+      # And remember to delete all the temporary files
+      os.remove(fn)    
+    
+   return fn_list    
+     
 # ---------------------------------------------------------------------------------------- 
 def run_plot_RGB(fn_list, params, suffix=None, 
                         name_in = None,
                         bands = [[[7500.,9300.],[6000.,7500.],[4800.,6000.]],], 
                         conts = [[None, None, None],],
-                        stretches = ['log',],
+                        stretches = [['arcsinh','arcsinh','arcsinh'],],
                         stretch_plims = [[10.,99.5,10.,99.5,10.,99.5],],
                         stretch_vlims = [[None,None,None,None,None,None],],
+                        gauss_blurs = [[None,None,None,],]
                        ):   
    ''' 
    This function is designed to make some RGB images from slices in the raw cube.
@@ -254,7 +589,7 @@ def run_plot_RGB(fn_list, params, suffix=None,
                      The limiting percentiles for the plot, as 
                      [pmin_r, pmax_r, pmin_g, pmax_g, pmin_b, pmax_b]
       stretch_vlims: list of list of floats [default: [[10.,99.5,10.,99.5,10.,99.5],]]
-                     The limtiing values for the plot (superseeds stretch_plims), as
+                     The limiting values for the plot (superseeds stretch_plims), as
                      [vmin_r, vmax_r, vmin_g, vmax_g, vmin_b, vmax_b]
       use_egal_dered: bool [default: False]
                       If available, whether to use the line fluxes corrected for 
@@ -303,8 +638,11 @@ def run_plot_RGB(fn_list, params, suffix=None,
                                                          band[2][0],band[2][1]))
                                                                              
       # Great, I am now ready to call the plotting function
-      bifus_p.make_RGBplot(fns, ofn,  stretch = stretches[i],
-                           plims = stretch_plims[i], vlims = stretch_vlims[i],
+      bifus_p.make_RGBplot(fns, ofn, 
+                           stretch = stretches[i],
+                           plims = stretch_plims[i], 
+                           vlims = stretch_vlims[i],
+                           gauss_blur = gauss_blurs[i],
                            title = r'\smaller R: %s-%s\,\AA\  G: %s-%s\,\AA\  B: %s-%s\,\AA' %  
                                    (band[0][0],band[0][1],
                                     band[1][0], band[1][1],
@@ -411,14 +749,14 @@ def run_sky_sub(fn_list, params, suffix = None, name_in = None, name_out = None)
                                          ofn = ofn,
                                          stretch = 'linear',
                                          pmin = 5,
-                                         pmax = 95,
+                                         pmax = 90,
                                          )
    
    # Show all the sky spaxels
    #sky_spaxels[sky_spaxels ==0] = np.nan
    #ax1.imshow(sky_spaxels, origin= 'lower', cmap='winter', vmin = 0, vmax = 1, alpha=0.5)
-   ax1.contour(sky_spaxels, levels=[0.5], colors = ['darkorange'], 
-               linewidths = [0.5], origin = 'lower')
+   ax1.contour(sky_spaxels, levels=[0.5], colors = ['w'], 
+               linewidths = [0.75], origin = 'lower')
    # TODO: have the contours follow the pixel edges
    
    
@@ -557,9 +895,9 @@ def run_fit_continuum(fn_list, params, suffix=None, name_in = None,
               The tag of this step, to be used in all files generated for rapid id.
       name_in: string
                name tag to identify which cube to use to run the routine
-    :Returns:
-        fn_list: dictionary
-                 The updated dictionary of filenames. 
+   :Returns:
+      fn_list: dictionary
+               The updated dictionary of filenames. 
    '''
     
    # For the bad continuum: run a LOWESS filter from statsmodel.nonparametric:

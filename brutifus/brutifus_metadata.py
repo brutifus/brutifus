@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 # ---| Some basic parameters |------------------------------------------------------------
 
-__version__ = '2019.01.1'
+__version__ = '2019.02.1'
 
 # Where are we located ?
 bifus_dir = os.path.dirname(__file__) # Get the project directory from the file location!
