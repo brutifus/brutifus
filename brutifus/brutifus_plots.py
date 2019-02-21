@@ -19,8 +19,6 @@ import numpy as np
 import scipy.interpolate as interp
 from scipy.ndimage.filters import gaussian_filter
 
-import aplpy
-
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm

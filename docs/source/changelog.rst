@@ -14,6 +14,11 @@ Changelog
    - (?) add scalebar to plots ... tricky: what if pix scale not uniform, North not up, etc ...
    - (?) only load ``Gaia`` from astroquery if we need it, to avoid the need for the internet when it is nopt needed.
 
+v2019.02.3: F.P.A. Vogt
+ - following the suggestion from Nick Whyborn, use image convolution to find the best 
+   spatial shift required to anchor the cube WCS on Gaia.
+ - removed all references to aplpy
+
 v2019.02.2: F.P.A. Vogt
  - added photutils to the list of required packages
  - fixed all docstrings

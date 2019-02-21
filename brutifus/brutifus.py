@@ -41,6 +41,7 @@ import pickle
 import glob
 
 import numpy as np
+from scipy import signal
 
 from matplotlib import MatplotlibDeprecationWarning
 #warnings.filterwarnings("error",category=MatplotlibDeprecationWarning)
@@ -113,8 +114,8 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
    .. note:: Proper motions for the GAIA entries are propagated to the DATE-OBS of the data.
              Source identification in white-light image based on :class:`photutils.DAOStarFinder`
              
-   .. todo:: This routine only works if the correct match is the closest neighbor. 
-             It needs to be reinforced in case of large offsets (and/or crowded fields).
+   .. todo:: Add warnings in case no correlation peak is found. Also, avoid using a 
+             hard-coded pixel FWHM for the cross-correlation.
    
    '''
    
@@ -141,7 +142,7 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
    # Start the search
    sources = daofind(wl_im - wl_median) 
    
-   # Create a list of sources in RA-Dec ?
+   # Create a list of sources in pixels
    sources_list =  np.array([sources['xcentroid'],sources['ycentroid']])
    
    # Reshape this properly as Nx2
@@ -212,6 +213,8 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
    # Reshape it properly
    gaia_cat_pix = np.array(gaia_cat_pix).T
    
+   # Outdated solution, not robust to large offsets
+   '''
    # Now, loop through each point, find the closest neighbor
    dxys = []
    for source in sources_list:
@@ -227,6 +230,59 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
    
    dx = np.median(dxys[:,0])
    dy = np.median(dxys[:,1])
+   '''
+   
+   # Ok, let's make two fake image from the source list, that I then cross-correlate
+   nx = header_data['NAXIS1']
+   ny = header_data['NAXIS2']
+   
+   im_ref = np.zeros((ny,nx))
+   im_obs = np.zeros((ny,nx))
+
+   # Get arrays of indices
+   x_ind, y_ind = np.meshgrid(np.arange(0,nx,1), np.arange(0,ny,1))
+
+   # Fill the two images with fake stars
+   for i in range(len(sources_list)):
+   
+      d = np.sqrt((x_ind-sources_list[i][0])**2 + (y_ind-sources_list[i][1])**2)
+      im_obs += np.exp(-( (d)**2 / ( 2.0 * 2.0**2 ) ) )
+      
+   for i in range(len(gaia_cat_pix)):
+   
+      d = np.sqrt((x_ind-gaia_cat_pix[i][0])**2 + (y_ind-gaia_cat_pix[i][1])**2)
+      im_ref += np.exp(-( (d)**2 / ( 2.0 * 2.0**2 ) ) )
+   
+   # Having done that, let's convolve the two images
+   # Credit to Nick Whyborn @ ALMA for the idea
+   # Don't forget to flip one of the image to get the correlation
+   im_corr = signal.convolve(im_ref, im_obs[::-1,::-1], mode='same', method='auto')
+   
+   # Now, let's find the brightest pixel
+   peak_loc = np.unravel_index(im_corr.argmax(), im_corr.shape)
+
+   # Let's also find the "fine" position of the peak with photutils
+   mean, median, std = sigma_clipped_stats(im_corr, sigma=10.0) 
+   daofind = DAOStarFinder(fwhm = 5.0, threshold = 10.*std)  
+   peaks = daofind(im_corr)   
+   
+   # Add a clean error, in case I find no peak.
+   if len(peaks) == 0:
+      raise Exception('Ouch! No WCS correlation peak identified.')
+   
+   # Ok, which one is the brightest peak ?
+   peak_id = np.argmax(peaks['peak'])
+   peak_loc_fine = (peaks['xcentroid'][peak_id], peaks['ycentroid'][peak_id])
+   
+   # Issue a warning if the brightest peak is too far from the brightest pixel
+   if np.abs(peak_loc_fine[0] - peak_loc[1])>2 or np.abs(peak_loc_fine[1] - peak_loc[0])>2 :
+      warnings.warn('WCS correlation peak does not coincide with the brightest pixel!')
+   
+   # Ok, so what are the offsets I should apply ?
+   dx = peak_loc_fine[0]-nx/2
+   dy = peak_loc_fine[1]-ny/2
+   
+   print('   Best offset: %+.2f  %+.2f pixels' % (dx,dy))
    
    # Let's make a plot to show how good I'm doing with getting a reasonable offset
    plt.close(99)
@@ -241,19 +297,16 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
    
    ax99 = plt.subplot(gs[0,0])  
    
-   ax99.scatter(dxys[:,0],dxys[:,1],marker='.', color='k')
-   ax99.axvline(dx)
-   ax99.axhline(dy)
-   
-   ax99.set_xlim((-1.2*max_offset, 1.2*max_offset))
-   ax99.set_ylim((-1.2*max_offset, 1.2*max_offset))
-   
-   circle = plt.Circle((0, 0), max_offset, facecolor='none', edgecolor='k')
-   ax99.add_artist(circle)
+   ax99.imshow(im_corr, cmap='gray', origin='lower', interpolation='nearest')
+   #ax99.scatter(dxys[:,0],dxys[:,1],marker='.', color='k')
+
+   ax99.plot(peak_loc_fine[0],peak_loc_fine[1], marker=bifus_p.crosshair(pa=0), c='crimson')
+ 
    ax99.set_aspect('equal')
-   ax99.set_xlabel('Delta x [pix]')
-   ax99.set_ylabel('Delta y [pix]')
-   ax99.set_title('Max. search radius: %.1f pixels' % (max_offset))
+   ax99.set_xlabel('x [pix]')
+   ax99.set_ylabel('y [pix]')
+   ax99.set_title('Correlation peak: (%+.2f,%+.2f) spaxels' % 
+                   (dx,dy))
    
    fig99.savefig(os.path.join(params['plot_loc'], suffix + '_' + params['target'] + 
                                                            '_get-WCS-offsets.pdf'))
