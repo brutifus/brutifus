@@ -71,7 +71,10 @@ from astropy.stats import sigma_clipped_stats
 from astropy.wcs import WCS
 from astropy.time import Time
 
-from astroquery.gaia import Gaia
+#from astroquery.gaia import Gaia
+# Only import astroquery ... load the Gaia server once I need it, later on ...
+# v2019.08.1
+from astroquery import gaia
 
 from photutils import DAOStarFinder
 from photutils import CircularAperture
@@ -79,11 +82,10 @@ from photutils import CircularAperture
 # Import brutifus-specific tools
 from . import brutifus_tools as bifus_t
 from . import brutifus_cof as bifus_cof
-# from . import brutifus_elf
 from . import brutifus_plots as bifus_p
 from . import brutifus_red as bifus_red
 from . import brutifus_metadata as bifus_m
-from .brutifus_metadata import __version__
+from .brutifus_version import __version__
 
 # ---------------------------------------------------------------------------------------- 
 def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = None, 
@@ -170,7 +172,12 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
    # First get the field "center" and radius
    if params['inst'] == 'MUSE':
       # For MUSE, assume the data is always of the same format (because it is).
-      core_coord = SkyCoord(ra=header_data['CRVAL1'], dec=header_data['CRVAL2'],
+      # Warning: this assumes the ref pixel is near the middle of the frame
+      # To be more robust (E.g. OCam), should be CRVAl 1/2 + CDELT1/2*(0.5*NAXIS 1/2 - CRPIX1/2)
+      # Fixed v. 2019.08.1
+      # Credits to J. Suherli for stumbling upon the bug.
+      core_coord = SkyCoord(ra=header_data['CRVAL1'] + header_data['CD1_1']*(0.5*header_data['NAXIS1']-header_data['CRPIX1']), 
+                            dec=header_data['CRVAL2'] + header_data['CD2_2']*(0.5*header_data['NAXIS2']-header_data['CRPIX2']),
                             unit =(u.deg, u.deg), frame='icrs')
       search_radius = 0.75 * max([np.abs(header_data['NAXIS1'] * header_data['CD1_1']*u.deg),
                                 np.abs(header_data['NAXIS2'] * header_data['CD2_2']*u.deg)])
@@ -181,7 +188,7 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
       print('   Querying GAIA ...')
    
    # Make it a sync search, because I don't think I need more than 2000 targets ...
-   j = Gaia.cone_search_async(core_coord, search_radius, verbose = False)
+   j = gaia.Gaia.cone_search_async(core_coord, search_radius, verbose = False)
    r = j.get_results()
    
    if len(r)>= 2000:
@@ -279,8 +286,8 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
       warnings.warn('WCS correlation peak does not coincide with the brightest pixel!')
    
    # Ok, so what are the offsets I should apply ?
-   dx = peak_loc_fine[0]-nx/2
-   dy = peak_loc_fine[1]-ny/2
+   dx = peak_loc_fine[0]-np.floor(nx/2) # Added the floor  ... think it is required by 'same'
+   dy = peak_loc_fine[1]-np.floor(ny/2) # v2019.07.1
    
    print('   Best offset: %+.2f  %+.2f pixels' % (dx,dy))
    
@@ -317,28 +324,6 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
    fits.setval(fn_list['white_light'], 'CRPIX1', value = hdu1.header['CRPIX1'] - dx, ext=1)
    fits.setval(fn_list['white_light'], 'CRPIX2', value = hdu1.header['CRPIX2'] - dy, ext=1)
    
-   # Then also to the fixed datacube
-   hdu0 = fits.PrimaryHDU(None, header0)
-   hdu1 = fits.ImageHDU(data)
-   hdu2 = fits.ImageHDU(error)
-        
-   for hdu in [hdu1,hdu2]:
-      # Make sure the WCS coordinates are included as well
-      hdu = bifus_t.hdu_add_wcs(hdu, header_data)
-      hdu = bifus_t.hdu_add_lams(hdu, header_data)
-      # Also include a brief mention about which version of brutifus is being used
-      hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
-      
-      # And update the WCS value
-      hdu.header['CRPIX1'] = hdu.header['CRPIX1'] - dx
-      hdu.header['CRPIX2'] = hdu.header['CRPIX2'] - dy
-      
-   # Add the filename to the dictionary of filenames
-   fn_list[name_out] = os.path.join(params['prod_loc'], 
-                                    suffix+'_'+params['target']+'_wcs-corr.fits')
-   hdu = fits.HDUList(hdus=[hdu0, hdu1, hdu2])  
-   hdu.writeto( fn_list[name_out], overwrite=True)
-   
    # Plot the white-light image to show how good I am doing ...
    (fig, ax, ofn) = bifus_p.make_2Dplot(fn_list['white_light'], ext = 1, 
                                         ofn = os.path.join(params['plot_loc'],
@@ -351,8 +336,8 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
                                        )   
    
    # And add them to the plot
-   ax.scatter(gaia_cat.ra, gaia_cat.dec, marker=bifus_p.crosshair(pa=45), color='darkorange', 
-              s=100, 
+   ax.scatter(gaia_cat.ra, gaia_cat.dec, marker='o', color='darkorange', 
+              s=20, facecolor='none',
               transform=ax.get_transform('world'))
    # ax.scatter(gaia_cat_pix[0], gaia_cat_pix[1], marker='+', color='darkorange', s=50)
    
@@ -362,7 +347,29 @@ def run_adjust_WCS(fn_list, params, suffix = None, name_in = None, name_out = No
               marker = 'o', facecolor = 'none')
                     
    # Save the updated plot
-   fig.savefig(ofn)                               
+   fig.savefig(ofn)   
+   
+   # Then also correct the WCS in the datacube
+   hdu0 = fits.PrimaryHDU(None, header0)
+   hdu1 = fits.ImageHDU(data, header_data)
+   hdu2 = fits.ImageHDU(error, header_error)
+        
+   for hdu in [hdu1,hdu2]:
+      # Make sure the WCS coordinates are included as well
+      #hdu = bifus_t.hdu_add_wcs(hdu, header_data)
+      #hdu = bifus_t.hdu_add_lams(hdu, header_data)
+      # Also include a brief mention about which version of brutifus is being used
+      hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
+      
+      # And update the WCS value
+      hdu.header['CRPIX1'] = hdu.header['CRPIX1'] - dx
+      hdu.header['CRPIX2'] = hdu.header['CRPIX2'] - dy
+      
+   # Add the filename to the dictionary of filenames
+   fn_list[name_out] = os.path.join(params['prod_loc'], 
+                                    suffix+'_'+params['target']+'_wcs-corr.fits')
+   hdu = fits.HDUList(hdus=[hdu0, hdu1, hdu2])  
+   hdu.writeto( fn_list[name_out], overwrite=True)                            
                                     
    return fn_list
    
@@ -574,7 +581,7 @@ def run_plot_BW(fn_list, params, suffix=None, name_in = None,
             
         
       ofn = os.path.join(params['plot_loc'], suffix+'_'+params['target']+'_'+name_in+
-                         '_BW_%i-%i.pdf' % (band[0],band[0]))
+                         '_BW_%i-%i.pdf' % (band[0],band[1]))
                                                                              
       # Great, I am now ready to call the plotting function
       bifus_p.make_2Dplot(fn, ext = 0, ofn = ofn, 

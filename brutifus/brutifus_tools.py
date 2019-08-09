@@ -19,7 +19,7 @@ import signal
 from astropy.constants import c
 from astropy.io import fits
 
-from .brutifus_metadata import __version__ as version
+from .brutifus_version import __version__ as version
 from . import brutifus_metadata as bifus_m
  
 # ----------------------------------------------------------------------------------------       

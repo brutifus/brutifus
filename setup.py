@@ -1,8 +1,13 @@
 from setuptools import setup, find_packages  # Always prefer setuptools over distutils
+import os
+
+# Run the version file
+v = open(os.path.join('.','brutifus','brutifus_version.py'))
+version = [l.split("'")[1] for l in v.readlines() if '__version__' in l][0]
 
 setup(
    name='brutifus',
-   version='2019.02.3',
+   version=version,
    author='F.P.A. Vogt',
    author_email='frederic.vogt@alumni.anu.edu.au',
    packages=['brutifus',],
@@ -21,6 +26,8 @@ setup(
       "statsmodels >= 0.9.0",
       "photutils >= 0.6",
    ],
+   
+   entry_points={'console_scripts': ['brutifus=brutifus.__main__:main']},
     
    classifiers=[
    # How mature is this project? Common values are
@@ -38,7 +45,7 @@ setup(
     
    # Specify the Python versions you support here. In particular, ensure
    # that you indicate whether you support Python 2, Python 3 or both.
-   'Programming Language :: Python :: 3.6',
+   'Programming Language :: Python :: 3.7',
    ],
     
    include_package_data=True, # So that non .py files make it onto pypi, and then back !

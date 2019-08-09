@@ -1,32 +1,41 @@
 .. |DOI_latest| image:: https://zenodo.org/badge/157203434.svg
    :target: https://zenodo.org/badge/latestdoi/157203434
+.. |ASCL| image:: https://img.shields.io/badge/ascl-1903.004-blue.svg?colorB=262255
+   :target: http://ascl.net/1903.004 
    
 Acknowledging brutifus
 ======================
 
-Only use lower case letters when mentioning brutifus, and always include the release number.
+1. Only use lower case letters when mentioning brutifus, and always include the release number.
 Ideally, you should also include a) the DOI associated with any of the Github releases, 
-e.g.:
+and b) the code's ASCL entry number, e.g.:
 
-    brutifus |release|: |DOI_latest|
+    brutifus |release|: |DOI_latest| |ASCL|
 
-brutifus uses several packages that **should also be acknowledged in their own right.** 
-The following Tex-formatted acknowledgment is one way to do so::
+2. If you use brutifus for your data analysis (and remember that you did so by the time you
+   reach the publication stage!), please cite:
+   
+   Vogt, *brutifus: Python module to post-process datacubes from integral field spectrographs*,
+   ASCL 1903.004 (2019). `ADS entry <http://adsabs.harvard.edu/abs/2019ascl.soft03004V>`_
+ 
+
+   brutifus also uses several packages that **should also be acknowledged in their own right.** 
+   The following Tex-formatted acknowledgment is one way to do so::
 
     This research has made use of \textsc{brutifus}, a Python module to process data cubes 
-    from integral field spectrographs hosted at \url{http://fpavogt.github.io/brutifus/}. 
-    \textsc{brutus} relies on \textsc{statsmodel} (Seabold & Perktold 2010),
+    from integral field spectrographs (Vogt, 2019). \textsc{brutifus} relies on 
+    \textsc{statsmodel} (Seabold & Perktold 2010),
     \textsc{matplotlib} (Hunter 2007), \textsc{astropy}, a community-developed core Python 
-    package for Astronomy (Astropy Collaboration et al., 2013, 2018), \textsc{photutils}, 
+    package for Astronomy (Astropy Collaboration et al., 2013, 2018), and \textsc{photutils}, 
     an affiliated package of \textsc{astropy} for photometry (DOI:10.5281/zenodo.2533376).
 
-Finally, you also ought to cite the following works, depending on your use of brutifus:
+   Finally, you also ought to cite the following works, depending on your use of brutifus:
 
-    1) Cleveland(1979); 
+    a) Cleveland (1979): 
         the reference for the Locally Weighted Scatterplot Smoothing (LOWESS) algorithm used 
         by brutus (via statsmodels) to fit the continuum.
             
-    2) The reddening laws:
+    b) The reddening laws:
         Either the Cardelli, Clayton & Mathis (1989) law, the Calzetti et al. (2000) law or 
         the theoretical model of a turbulent dust screen of **Fischera & Dopita (2005) 
         [default]** for the extragalactic attenuation corrections, and
@@ -79,3 +88,4 @@ References:
     
  - `Schlafly & Finkbeiner (2011) <http://adsabs.harvard.edu/abs/2011ApJ...737..103S>`_  
  - `Schlegel, Finkbeiner & Davis (1998) <http://adsabs.harvard.edu/abs/1998ApJ...500..525S>`_ 
+ - `Vogt (2019) <http://adsabs.harvard.edu/abs/2019ascl.soft03004V>`_

@@ -51,7 +51,7 @@ proc_steps = [
             },
    },
    # Perform some sky subtraction, if needed
-   {'step':'sky_sub', 'run':True, 'suffix':'03', 
+   {'step':'sky_sub', 'run':False, 'suffix':'03', 
     'args':{'name_in':'raw_cube',
             'name_out':'skysub_cube'},
    },
@@ -103,7 +103,7 @@ proc_steps = [
             },
    },
    # Make some BW plots ...
-   {'step':'plot_BW', 'run':True, 'suffix':'11', 
+   {'step':'plot_BW', 'run':False, 'suffix':'11', 
     'args':{'name_in':'galdered_cube', # What cube do I want to plot ?
             'stretches':['linear','linear', 'linear', 'linear'],
             'stretch_plims': [[0.5,99.9],

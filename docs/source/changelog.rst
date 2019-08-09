@@ -12,7 +12,18 @@ Changelog
    - when drawing contours in `run_skysub()`, show the actual pixel edges
    - allow an automated selection of the sky areas -> requires a better snr estimate ?
    - (?) add scalebar to plots ... tricky: what if pix scale not uniform, North not up, etc ...
-   - (?) only load ``Gaia`` from astroquery if we need it, to avoid the need for the internet when it is nopt needed.
+
+v2019.08.1; F.P.A Vogt
+- improved the WCS adjustment step, in case the reference pixel is not in the middle of the image
+  (found by J. Suherli with OCam data).
+- added automatic inclusion of code version in setup.py
+- only load ``Gaia`` from astroquery if we need it, to avoid the need for the internet when it is not needed.
+
+v2019.07.1: F.P.A. Vogt
+- added courtesy function to create the execution files, via `python -m brutifus --setup`.
+- added a proper entry point, so this can be run as `brutifus --setup`.
+- carry over the full original headers when adjusting the WCS values.
+- fixed a bug in the WCS adjustment function that led to an error of 0.5 pixel for odd array sizes
 
 v2019.02.3: F.P.A. Vogt
  - following the suggestion from Nick Whyborn, use image convolution to find the best 

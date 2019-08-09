@@ -3,8 +3,8 @@
 .. |DOI_latest| image:: https://zenodo.org/badge/157203434.svg
    :target: https://zenodo.org/badge/latestdoi/157203434
 
-.. |ascl| image:: https://img.shields.io/badge/ascl-1806.027-blue.svg?colorB=262255
-   :target: http://ascl.net/1806.027
+.. |ascl| image:: https://img.shields.io/badge/ascl-1903.004-blue.svg?colorB=262255
+   :target: http://ascl.net/1903.004 
 
 .. |pypi| image:: https://img.shields.io/pypi/v/brutifus.svg?colorB=<brightgreen>
     :target: https://pypi.python.org/pypi/brutifus/
@@ -32,7 +32,7 @@
 brutifus |release|
 ==================
 
-|pypi| |DOI_latest| |astropy| |last-commit| 
+|pypi| |DOI_latest| |ascl| |astropy| |last-commit| 
 
 brutifus is a set of Python routines designed to post-process datacubes from Integral Field 
 Spectrographs, and in particular MUSE and WiFeS. The spirit of brutifus is to deal with 
