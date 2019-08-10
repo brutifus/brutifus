@@ -1,0 +1,38 @@
+
+# === Very high-level parameters ===
+systemtex: True # Use the system LaTeX instead of the Python one ?
+
+# === High-level parameters ===
+target: 'SNR123'        # Short and sweet string, for the filenames
+z_target: 0.0           # Redshift
+inst: 'MUSE'            # Instrument name
+multiprocessing: True   # Use multi-cpus ? int, or True for all
+verbose: True           # Print stuff ?
+
+# === Data location ===
+data_loc: './some/relative/path' # Where is the data ?
+data_fn: 'some_cube.fits'        # What is the name of the cube ?
+
+# === Processing parameters ===
+# --- Constructing SNR maps ---
+snr_ranges:          # lam_min, lam_max, 'c'ontinuum, or 'e'mission
+#   - [7400., 8500., 'c']
+#   - [6560., 6570., 'e']
+
+# --- Manual sky subtraction ---
+sky_regions:         # x0,y0, radius, or x0,y0,dx,dy
+#   - [265, 88, 3]
+#   - [254, 51, 2]
+
+# --- Correcting for the Galactic extinction ---
+gal_curve: 'f99'     # Set to 'f99' to follow NED.
+gal_rv: 3.1          # Set to 3.1 to follow NED.
+Ab:                  # Ab (Landolt) from NED.
+Av:                  # Av (Landolt) from NED.
+
+# --- LOWESS Continuum fitting --- 
+lowess_it: 10        # Number of iteration for sigma-clipping to get rid of outliers
+lowess_frac: 0.05    # % of the array used for deriving each point. 0.05 = sweet spot?
+
+
+          

@@ -21,8 +21,28 @@ import matplotlib.pyplot as plt
 # Where are we located ?
 bifus_dir = os.path.dirname(__file__) # Get the project directory from the file location!
 
-# And get all the different useful locations associated
-#refdata_dir = os.path.join(brutifus_dir,'..','reference_data')
+# Name of the parameters files
+bifus_params = 'params_brutifus.yaml'
+bifus_procsteps = 'procsteps_brutifus.yaml'
+
+# Name of default storage spaces
+plot_loc = 'brutifus_plots'
+prod_loc = 'brutifus_products'
+tmp_loc =  'brutifus_tmp'
+
+
+def get_fn_list_fn(target):
+   ''' Returns the filename of the storage pickle for all the filenames used by the code
+      
+      :param target: name of the target/object to be processed
+      :type target: string 
+   
+   
+      :return: the pickled dictionary filename
+      :rtype: string
+   '''
+      
+   return 'bifus_fn-list_%s.pkl' % (target) # Name of the dictionary for filenames
 
 # ---| Plotting parameters |--------------------------------------------------------------
 

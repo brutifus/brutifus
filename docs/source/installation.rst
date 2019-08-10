@@ -18,7 +18,7 @@ welcome and will be examined in detail.
       
 Requirements
 ------------
-brutifus is written in Python 3.6. The following packages are required for it to work 
+brutifus is written in Python 3. The following packages are required for it to work 
 properly:
 
 * astropy (3.0 or above)
@@ -32,11 +32,10 @@ properly:
 Testing the installation
 ------------------------
 
-In a terminal shell, try to import brutifus::
+In a terminal shell, try calling the high-level brutifus help::
  
-   import brutifus
+   brutifus --help
  
-If that works, chances are, you will probably be fine ... Note that for now, brutifus 
-requires a connection to the internet to work.
+If that works, chances are, you will probably be fine ...
 
 .. todo:: Implement an actual set of tests ... sigh!

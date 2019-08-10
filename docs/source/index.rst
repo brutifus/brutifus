@@ -74,13 +74,6 @@ Contents
    modules/modules
    Github <https://github.com/fpavogt/brutifus>
 
-Indices and tables
---------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
 
 ----
 

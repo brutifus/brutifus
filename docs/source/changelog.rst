@@ -3,21 +3,27 @@
 Changelog
 =========
 
-.. todo::
+.. todo:: 
+   - use `config.parser` to feed in the parameters, instead of YAML  
    - (!) allow to abort the continuum fitting with CTRL-C
    - `run_crude_snr_maps`: compute proper S/N for bright stars (not <>/std !)
    - enable minorticks in colorbars (see astropy bug `[8126] <https://github.com/astropy/astropy/issues/8126>`_)
    - set the color of NaN pixels in plots ... (see astropy bug `[8165] <https://github.com/astropy/astropy/issues/8165>`_)
-   - check that white ticks appear in RGB images with imshow
    - when drawing contours in `run_skysub()`, show the actual pixel edges
    - allow an automated selection of the sky areas -> requires a better snr estimate ?
    - (?) add scalebar to plots ... tricky: what if pix scale not uniform, North not up, etc ...
 
-v2019.08.1; F.P.A Vogt
-- improved the WCS adjustment step, in case the reference pixel is not in the middle of the image
-  (found by J. Suherli with OCam data).
+v2019.08.2: F.P.A. Vogt
+- improved the WCS function, to minimize memory use in crowded fields.
+- full restructuration of the high-level operation of the code, with proper entry point, via a new `run()` function
+- split the WCS correction function 2, so that it can also be used (potentially) as a stand-alone tool for 2D images.
+- started using pylint ... ouch!
+- worked on the plotting routines, to make them more robust and uniform
+
+v2019.08.1: F.P.A Vogt
+- improved the WCS adjustment step, in case the reference pixel is not in the middle of the image (found by J. Suherli with OCam data).
 - added automatic inclusion of code version in setup.py
-- only load ``Gaia`` from astroquery if we need it, to avoid the need for the internet when it is not needed.
+- added a proper ``brutifus`` entry point from the console.
 
 v2019.07.1: F.P.A. Vogt
 - added courtesy function to create the execution files, via `python -m brutifus --setup`.

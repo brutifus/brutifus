@@ -366,10 +366,8 @@ def make_2Dplot(fn, # path to the data (complete!)
                 ext = 0, # Which extension am I looking for ?
                 ofn = 'plot.pdf', # Savefig filename
                 stretch = 'arcsinh',
-                vmin = None, 
-                vmax = None,
-                pmin = 10.0,
-                pmax = 99.99,
+                vlims = [None, None], 
+                plims = [10.0, 99.99],
                 gauss_blur = None,
                 cmap = None,
                 cblabel = None,
@@ -429,20 +427,14 @@ def make_2Dplot(fn, # path to the data (complete!)
       
    # Let's create a plot, and forget about using aplpy
    plt.close(1)
-   fig = plt.figure(1, figsize = (fig_dims[0], fig_dims[1]))
+   fig = plt.figure(1, figsize=(fig_dims[0], fig_dims[1]))
    
    # Set the scene with gridspec
-   gs = gridspec.GridSpec(2,1, 
-                          height_ratios = fig_dims[2],
-                          width_ratios = fig_dims[3], 
-                          left = fig_dims[4], 
-                          right = fig_dims[5], 
-                          bottom = fig_dims[6], 
-                          top = fig_dims[7], 
-                          wspace = fig_dims[8], 
-                          hspace = fig_dims[9])
+   gs = gridspec.GridSpec(2, 1, height_ratios=fig_dims[2], width_ratios=fig_dims[3],
+                          left=fig_dims[4], right=fig_dims[5], bottom=fig_dims[6], top=fig_dims[7],
+                          wspace=fig_dims[8], hspace=fig_dims[9])
    
-   ax1 = plt.subplot(gs[1,0], projection=WCS(header))
+   ax1 = plt.subplot(gs[1, 0], projection=WCS(header))
    
    # What is the colorscheme selected ?
    if cmap == 'alligator':
@@ -453,61 +445,59 @@ def make_2Dplot(fn, # path to the data (complete!)
       mycmap = 'Greys'
    else:
       mycmap = cmap
-   
+
    # What is the normalization ?
-   norm = astrovis.ImageNormalize(data, 
-                                  interval = get_im_interval(pmin = pmin, pmax = pmax,
-                                                             vmin = vmin, vmax = vmax),
-                                  stretch = get_im_stretch(stretch),
-                                  clip = False)
-   
+   norm = astrovis.ImageNormalize(data,
+                                  interval=get_im_interval(pmin=plims[0], pmax=plims[1],
+                                                           vmin=vlims[0], vmax=vlims[1]),
+                                  stretch=get_im_stretch(stretch),
+                                  clip=False)
+
    # Plot the image
-   im = ax1.imshow(data, origin = 'lower', interpolation = 'nearest', cmap = mycmap,
-                   norm = norm)
-   
-   #ax1.set_nan_color((0.5,0.5,0.5))
+   im = ax1.imshow(data, origin='lower', interpolation='nearest', cmap=mycmap,
+                   norm=norm)
+
    # This does not work !!!!
    # TODO:
    ax1.set_facecolor('salmon')
-   
+
    # Add the scalebar
    #if scalebar is not None:
-   #   show_scale(ax1, scale_length = scalebar[0], scale_text = scalebar[1], 
+   #   show_scale(ax1, scale_length = scalebar[0], scale_text = scalebar[1],
    #              scale_loc = scalebar[2])
-   
+
    # Make the axes look pretty
    (ra,dec) = finetune_WCSAxes(ax1)
-   
+
    # Deal with the colorbar
-   if not(cmap is None):
-      
+   if cmap is not None:
+
       ax0 = plt.subplot(gs[0,0])
-   
-      cb = plt.colorbar(cax = ax0, mappable=im, orientation='horizontal', 
-                        ticklocation = 'top')
+
+      cb = plt.colorbar(cax = ax0, mappable=im, orientation='horizontal',
+                        ticklocation='top')
       cb.set_label(cblabel, labelpad = 10)
       #cb.ax.xaxis.set_ticks_position('top')
       ax0.tick_params(axis='x', which='major', pad = 5)
-      
+
       # BUG: can't get the minor ticks working properly - turn them off for now
       cb.ax.minorticks_off()
-   
+
    fig.savefig(ofn)
-   
+
    return (fig, ax1, ofn)
-   
-# ----------------------------------------------------------------------------------------  
-def make_RGBplot(fns, ofn, 
-                 ext = [0,0,0],
-                 stretch = ['linear','linear','linear'], 
-                 plims = [0.25, 99.75, 0.25,99.75, 0.25, 99.75], 
+
+# --------------------------------------------------------------------------------------------------
+def make_RGBplot(fns, ofn, ext = [0, 0, 0],
+                 stretch = ['linear', 'linear', 'linear'],
+                 plims = [0.25, 99.75, 0.25, 99.75, 0.25, 99.75],
                  vlims = [None, None, None, None, None, None],
-                 gauss_blur = [None,None,None],
+                 gauss_blur = [None, None, None],
                  title = None,
                  scalebar = None,
                 ):
    ''' Creates an RGB image from three fits files.
-   
+
    :param fns: The filename (+path!) fo the  3 fits file to display (in R, G and B orders).
    :type fns: list
    :param ofn: The filneame (+path) of the output file.
@@ -526,86 +516,82 @@ def make_RGBplot(fns, ofn,
    :type gauss_blur: list
    :param title: Title to display above the image
    :type title: str
-   :param scalebar: If set, adds a scale bar to the plot. 
-                    Format: [lenght arcsec, length kpc, loc, unit]   
+   :param scalebar: If set, adds a scale bar to the plot.
+                    Format: [lenght arcsec, length kpc, loc, unit]
    :type scalebar: list 
 
    :return: a list containing the figure, the ax1 and the plot filename.
    :rtype: list
    
-   '''  
-    
+   '''
+
    # If I was given a single stretch for all images, enlarge it
    if type(stretch) == np.str:
-      stretch = [stretch,stretch,stretch]
-   
+      stretch = [stretch, stretch, stretch]
+
    # If I was given a single extension, assume it is the same everywhere
    if type(ext) == np.int:
-      ext = [ext,ext,ext]
-   
+      ext = [ext, ext, ext]
+
    # Open the data and headers
-   data = [] 
+   data = []
    header = []
-   
-   for (f,fn) in enumerate(fns):
+
+   for (f, fn) in enumerate(fns):
       hdu = fits.open(fn)
-      
+
       # Get the data
       this_data = hdu[ext[f]].data
-      
-      # If requested, smooth the array
-      if not(gauss_blur[f] is None):
 
-         this_data = gaussian_filter(this_data, sigma = gauss_blur[f])
-      
+      # If requested, smooth the array
+      if gauss_blur[f] is not None:
+
+         this_data = gaussian_filter(this_data, sigma=gauss_blur[f])
+
+      # If the image if full of NaN's ... issue a proper error, 'cause I can't normalize it!
+      if np.size(this_data[this_data == this_data]) == 0:
+         raise Exception('Ouch ... the %s image if full of NaNs!' % (['R', 'G ', 'B'][f]))
+
       # Normalize it
-      this_data = get_im_interval(pmin = plims[2*f], pmax = plims[2*f+1], 
-                                  vmin = vlims[2*f], vmax = vlims[2*f+1])(this_data)
-      
+      this_data = get_im_interval(pmin=plims[2 * f], pmax=plims[2 * f + 1],
+                                  vmin=vlims[2 * f], vmax=vlims[2 * f + 1])(this_data)
+
       # Stretch it
       this_data = get_im_stretch(stretch[f])(this_data)
-      
+
       data += [this_data]
       header += [hdu[ext[f]].header]
-   
+
     # What is the size of my images ?
    (ny,nx) = np.shape(data[0])
-   
+
    # What is the associated fig dimensions I need ?
    fig_dims = get_fig_dims(nx, ny)
-   
+
    # Let's create a plot, and forget about using aplpy
    plt.close(1)
-   fig = plt.figure(1, figsize = (fig_dims[0], fig_dims[1]))
-   
+   fig = plt.figure(1, figsize=(fig_dims[0], fig_dims[1]))
+
    # Set the scene with gridspec
-   gs = gridspec.GridSpec(2,1, 
-                          height_ratios = fig_dims[2],
-                          width_ratios = fig_dims[3], 
-                          left = fig_dims[4], 
-                          right = fig_dims[5], 
-                          bottom = fig_dims[6], 
-                          top = fig_dims[7], 
-                          wspace = fig_dims[8], 
-                          hspace = fig_dims[9])
-   
-   ax1 = plt.subplot(gs[1,0], projection = WCS(header[0]))
-   
-   im = ax1.imshow(np.transpose(np.array(data), (1,2,0)), 
-                   origin = 'lower', 
-                   interpolation = 'nearest', zorder = 0)
-   
-   
+   gs = gridspec.GridSpec(2, 1, height_ratios=fig_dims[2], width_ratios=fig_dims[3],
+                          left=fig_dims[4], right=fig_dims[5], bottom=fig_dims[6], top=fig_dims[7],
+                          wspace=fig_dims[8], hspace=fig_dims[9])
+
+   ax1 = plt.subplot(gs[1, 0], projection=WCS(header[0]))
+
+   im = ax1.imshow(np.transpose(np.array(data), (1, 2, 0)), origin='lower', interpolation='nearest', 
+                   zorder=0)
+
    # Assume an astro image, and set the ticks to white
    ax1.tick_params(axis='both', which='both', color='w', direction='in')
-   
+
    # Make the axes look pretty
    (ra,dec) = finetune_WCSAxes(ax1)
-   
-   
-   if not(title is None):
+
+   if title is not None:
       ax1.set_title(title)
 
+   # Save the figure
    fig.savefig(ofn)
-        
+
    return (fig, ax1, ofn)

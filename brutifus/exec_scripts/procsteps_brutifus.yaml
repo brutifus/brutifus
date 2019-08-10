@@ -1,0 +1,97 @@
+
+# Each step below will be execute in order. Users should feel free to re-arrange/skip/
+# delete/duplicate steps as needed. Note: step names are not optional !!!
+
+# --------------------------------------------------------------------------------------------------
+# The first two functions are used for plotting ... use them as often as needed to visualize
+# the different data products !
+# --- Make some RGB plots from the datacube ... ---
+-  step: 'plot_RGB'
+   run: True
+   suffix: 'rgb1' 
+   args:
+      name_in: 'wcs-corr_cube' # What cube do I want to plot ?
+      bands: [[6560,6570,7500,8750,4750,5500]]
+      stretches: [['arcsinh','arcsinh','arcsinh']] # arcsinh, linear
+      plims: [[1.,98.,1.,98.,1.,98.]]
+      vlims: [[null, null, null, null, null, null]]
+      gauss_blurs: [[null, null, null]]
+      conts: [[null, null, null, null, null, null]]
+
+# --- Make some BW plots ... ---
+-  step: 'plot_BW'
+   run: False
+   suffix: 'bw1' 
+   args:
+      name_in: 'wcs-corr_cube'   # What cube do I want to plot ?
+      bands: [[6556, 6579]]      # lam min and max ... add more pairs to plot more plots !
+      stretches: ['linear']      # Image stretch ... add more to tweak different plots.
+      plims: [[10, 99]]
+      vlims: [[null, null]]      
+      gauss_blurs: [null]
+      conts: [[null, null]]
+
+# --------------------------------------------------------------------------------------------------
+
+# === Correct the WCS values to check with Gaia. ===
+-  step: 'adjust_WCS' 
+   run: False
+   suffix: 's00'
+   args:
+      name_in: 'raw_cube'
+      name_out: 'wcs-corr_cube'
+   
+# === First, compute some S/N maps for the continuum and emission lines of interest ... ===
+-  step: 'crude_snr_maps' 
+   run: False 
+   suffix: 's01'
+   args:
+      name_in: 'raw_cube' # What cube do I want to process ?
+      do_plot: True  # Do I want to save some pretty pictures ?
+      zcorr_lams: False # True = correct wavelength ranges for redshift
+
+# === Perform some sky subtraction, if needed ===
+-  step: 'sky_sub' 
+   run: False 
+   suffix: 's03' 
+   args:
+      name_in: 'raw_cube'
+      name_out: 'skysub_cube'
+      
+# === Correct for galactic reddening via the values given on NED ===
+-  step: 'gal_dered' 
+   run: False 
+   suffix: 's04'
+   args:
+      name_in: 'skysub_cube'
+      name_out: 'galdered_cube'
+      do_plot: True
+      
+   
+# === Continuum fitting ===
+# First, fit the continuum using a LOWESS filter. Much more elegant than a polynomial!
+-  step: fit_continuum 
+   run: False 
+   suffix: 's05'
+   args:
+      name_in: 'galdered_cube'
+      start_row: 0 # Where to start the fitting ? None = 0
+      end_row:  # Where to end the fitting ? None = max
+      method: 'lowess' # What kind of fitting is this ?
+
+# Gather the output in a single datacube
+-  step: 'make_continuum_cube'
+   run: False
+   suffix: 's06'
+   args:
+      method:'lowess'
+
+
+# Subtract the sky continuum
+-  step: 'subtract_continuum'
+   run: False
+   suffix: 's07'
+   args:
+      name_in: 'galdered_cube'
+      name_out: 'consub_cube'
+      method: 'lowess'

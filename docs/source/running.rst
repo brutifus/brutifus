@@ -5,13 +5,19 @@ Running brutifus
 The spirit of brutifus is that each user can choose, depending on the object at hand & the
 quality of the data, what processing steps are warranted. These are governed by the
 ``brutus_execute.py`` file. In parallel, the user can define all relevant parameters using
-the ``brutus_params.py`` file. The two files are shipped as supplementary files with the 
-code, but you can also get them 
-`here <https://github.com/fpavogt/brutifus/blob/master/brutifus/exec_scripts/brutifus_params.py>`_ 
-and 
-`there <https://github.com/fpavogt/brutifus/blob/master/brutifus/exec_scripts/brutifus_execute.py>`_.
+the ``brutus_params.py`` file. The two files are `shipped as supplementary files with the 
+code <https://github.com/fpavogt/brutifus/blob/master/brutifus/exec_scripts/>`_. The following
+high-level entry point will create local copies in your current location (assumed to be your
+favorite processing area). In a terminal: :: 
 
-I very much suggest to make a local copy of these files for each project! 
+    cd ~/where/ever/you/want
+    brutifus --setup
+
+
+.. note:: 
+
+    I very much suggest to make a local copy of the execution and parameter files for 
+    each project, rather than using a single processing area for all projects.
 
 Setting parameters with ``brutifus_params.py``
 ----------------------------------------------
@@ -25,7 +31,7 @@ All the brutifus parameters with a `scientific impact` can be specified inside
     comments inside the file.
 
 
-Once everything is set as it should be, run the script from a Python shell ::
+Once everything is set as it should be, run the script from a Python shell: ::
 
     >>> run brutus_params.py
 
