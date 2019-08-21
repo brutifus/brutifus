@@ -1,17 +1,17 @@
 
-# === Very high-level parameters ===
+# === Very-high-level parameters ===
 systemtex: True # Use the system LaTeX instead of the Python one ?
 
 # === High-level parameters ===
 target: 'SNR123'        # Short and sweet string, for the filenames
-z_target: 0.0           # Redshift
+z_target: 0.0           # Redshift of the target
 inst: 'MUSE'            # Instrument name
-multiprocessing: True   # Use multi-cpus ? int, or True for all
-verbose: True           # Print stuff ?
+multiprocessing: True   # Use multi-cpus ? integer for upper limit, or True for all
+verbose: True           # Print stuff that may be of interest ?
 
 # === Data location ===
 data_loc: './some/relative/path' # Where is the data ?
-data_fn: 'some_cube.fits'        # What is the name of the cube ?
+data_fn: 'some_cube.fits'        # What is the name of the datacube ?
 
 # === Processing parameters ===
 # --- Constructing SNR maps ---
@@ -33,6 +33,3 @@ Av:                  # Av (Landolt) from NED.
 # --- LOWESS Continuum fitting --- 
 lowess_it: 10        # Number of iteration for sigma-clipping to get rid of outliers
 lowess_frac: 0.05    # % of the array used for deriving each point. 0.05 = sweet spot?
-
-
-          

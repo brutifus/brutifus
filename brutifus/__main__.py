@@ -36,7 +36,8 @@ import argparse
 
 # Use argparse to make brutifus user friendly ---------------------------------------------
 parser = argparse.ArgumentParser(description=''' Aids in the post-processing of 3D datacubes. ''',
-                                 epilog =' Full documentation: %s' % ('http://fpavogt.github.io/brutifus'))
+                                 epilog =' Full documentation: %s' % ('http://fpavogt.github.io/brutifus'),
+                                 formatter_class=argparse.RawTextHelpFormatter)
 
 parser.add_argument('-v', '--version', action='version', version=('%s'%__version__))                   
                     

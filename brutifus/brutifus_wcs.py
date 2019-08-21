@@ -57,7 +57,6 @@ def get_linear_WCS_corr(fn, obstime=None, verbose=True, suffix=None, target=None
 
    '''
 
-
    # Get the data
    hdu = fits.open(fn)
    header = hdu[0].header
