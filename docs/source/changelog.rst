@@ -9,9 +9,14 @@ Changelog
    - enable minorticks in colorbars (see astropy bug `[8126] <https://github.com/astropy/astropy/issues/8126>`_)
    - set the color of NaN pixels in plots ... (see astropy bug `[8165] <https://github.com/astropy/astropy/issues/8165>`_)
    - when drawing contours in `run_skysub()`, show the actual pixel edges
-   - allow an automated selection of the sky areas -> requires a better snr estimate ?
+   - allow for an automated selection of the sky areas -> requires a better snr estimate ?
    - (?) use `config.parser` to feed in the parameters, instead of YAML 
    - (?) add scalebar to plots ... tricky: what if pix scale not uniform, North not up, etc ...
+
+v2019.08.3: F.P.A. Vogt
+- continued with pylint a bit more ... re-ouch ...
+- added PyYAML to the list of required packages in `setup.py`
+- fixed `MANIFEST.in` to include the .yaml setup files!
 
 v2019.08.2: F.P.A. Vogt
 - improved the WCS function, to minimize memory use in crowded fields.

@@ -1,6 +1,6 @@
 include LICENSE
 include README
-recursive-include brutifus/exec_scripts *.py
+recursive-include brutifus/exec_scripts *.yaml
 recursive-include brutifus/mpl_styles  *.mplstyle
 recursive-include brutifus/docs * 
 recursive-exclude * *.DS_Store

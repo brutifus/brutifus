@@ -25,6 +25,7 @@ setup(
       "astroquery >= 0.3.4",
       "statsmodels >= 0.9.0",
       "photutils >= 0.6",
+      "PyYAML >=5.1",
    ],
    
    entry_points={'console_scripts': ['brutifus=brutifus.__main__:main']},
