@@ -1,13 +1,21 @@
 To generate all the function docs automatically, use
 
+cd ./docs/
 sphinx-apidoc -f -o source/modules/ ../brutifus/
 
 and change the title in modules.rst to “The functions of brutifus”
 
 To build the site:
 
-sphinx-build -a -b html source build
+sphinx-build -a -b html source ../../brutifus_docs
 
-Ipython Notebook are now formatted well without further manual tweak thanks to the nbsphinx package. References and the like may need to be included in them in a NBconvert cell with reST format. 
+NOTE: the docs are living on their own brutifus.github.io repository. The previous command assumes that the folder *brutifus_docs* is a clone of that repository (created, for example, using "git clone https://github.com/brutifus/brutifus.github.io.git"). If that is the case, one should do the following to upload the docs to the web
 
-Any example file (like the csv input files) have been included in the test_arena, so they are shipped with the package.
+
+cd ../../brutifus_docs
+git add -A .
+git commit -a -m "Update docs"
+git push origin master
+
+
+
