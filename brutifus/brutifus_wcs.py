@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=C0103,W0311
-
+#pylint: disable=C0103,W0311
 '''
- brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
- Copyright (C) 2018-2019,  F.P.A. Vogt
+brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
+Copyright (C) 2018-2019,  F.P.A. Vogt
 
 ----------------------------------------------------------------------------------------------------
 
- This file contains WCS-related function for the higher-leve brutifus routines.
+This file contains WCS-related function for the higher-leve brutifus routines.
 
- Created August 2019, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
+Created August 2019, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
 '''
 # --------------------------------------------------------------------------------------------------
 
