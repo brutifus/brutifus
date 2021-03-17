@@ -1,6 +1,11 @@
 brutifus package
 ================
 
+.. automodule:: brutifus
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Submodules
 ----------
 
@@ -64,15 +69,6 @@ brutifus.brutifus\_wcs module
 -----------------------------
 
 .. automodule:: brutifus.brutifus_wcs
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Module contents
----------------
-
-.. automodule:: brutifus
    :members:
    :undoc-members:
    :show-inheritance:

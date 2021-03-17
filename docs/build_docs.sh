@@ -23,10 +23,10 @@ sphinx-apidoc -f -M -o ./source/modules/ ../brutifus/
 rm -f ./source/modules/modules.rst
 
 # Run the brutifus help, to automate the display of the response in the docs.
-#brutifus_init -h > source/brutifus_help_msg.txt
+brutifus --help > source/brutifus_help_msg.txt
 
 # Generate the documentation, storing it in the build directory
 sphinx-build -a -b html ./source ./build
 
 # Clean-up
-#rm source/brutifus_help_msg.txt
+rm source/brutifus_help_msg.txt

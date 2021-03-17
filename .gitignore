@@ -4,6 +4,8 @@
 *.pdf
 *.jpg
 build/
+docs/build/
+docs/source/modules/
 _pycache_/
 .DS_Store
 brutifus.egg-info/
