@@ -1,0 +1,100 @@
+All notable changes to brutifus will be documented in this file.
+
+The format is inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+brutifus follows a year.month.release versioning scheme, i.e.: yyyy.mm.v
+
+
+## [TODO]
+  - (!) allow to abort the continuum fitting with CTRL-C
+  - `run_crude_snr_maps`: compute proper S/N for bright stars (not <>/std !)
+  - enable minorticks in colorbars (see astropy bug `[8126] <https://github.com/astropy/astropy/issues/8126>`_)
+  - set the color of NaN pixels in plots ... (see astropy bug `[8165] <https://github.com/astropy/astropy/issues/8165>`_)
+  - when drawing contours in `run_skysub()`, show the actual pixel edges
+  - allow for an automated selection of the sky areas -> requires a better snr estimate ?
+  - (?) use `config.parser` to feed in the parameters, instead of YAML 
+  - (?) add scalebar to plots ... tricky: what if pix scale not uniform, North not up, etc ...
+
+
+## [Unreleased]
+### Added:
+### Fixed:
+### Changed:
+ - [fpavogt, 2021-03-17] Moved the changelog to a dedicated CHANGELOG file, and switch to semantic versioning
+### Deprecated:
+### Removed:
+### Security:
+
+## [v2019.08.3]
+### Added:
+ - added PyYAML to the list of required packages in `setup.py`
+### Fixed:
+ - fixed `MANIFEST.in` to include the .yaml setup file
+### Changed:
+ - continued with pylint a bit more ... re-ouch ...
+
+## [v2019.08.2]
+### Added:
+ - [fpavogt] started using pylint ... ouch!
+### Changed:
+ - [fpavogt] improved the WCS function, to minimize memory use in crowded fields.
+ - [fpavogt] full restructuration of the high-level operation of the code, with proper entry point, via a new `run()` function
+ - [fpavogt] split the WCS correction function, so that it can also be used (potentially) as a stand-alone tool for 2D images.
+ - [fpavogt] worked on the plotting routines, to make them more robust and uniform.
+
+## [v2019.08.1]
+### Added:
+ - [fpavogt] added automatic inclusion of code version in setup.py
+ - [fpavogt] added a proper ``brutifus`` entry point from the console.
+### Changed:
+ - [fpavogt] improved the WCS adjustment step, in case the reference pixel is not in the middle of the image (found by J. Suherli with OCam data).
+
+## [v2019.07.1]
+### Added:
+ - [fpavogt] added courtesy function to create the execution files, via `python -m brutifus --setup`
+ - [fpavogt] added a proper entry point, so this can be run as `brutifus --setup`
+### Fixed:
+ - [fpavogt] carry over the full original headers when adjusting the WCS values
+ - [fpavogt] fixed a bug in the WCS adjustment function that led to an error of 0.5 pixel for odd array sizes
+
+## [v2019.02.3]
+### Changed:
+ - following the suggestion from Nick Whyborn, use image convolution to find the best 
+   spatial shift required to anchor the cube WCS on Gaia.
+### Removed:
+ - removed all references to aplpy
+
+## [v2019.02.2]
+### Added:
+ - [fpavogt] added photutils to the list of required packages
+### Fixed:
+ - [fpavogt] fixed all docstrings
+ - [fpavogt] cleaned up code of all old brutus bits not (yet) ported to brutifus.
+### Changed:
+ - [fpavogt] started working on documentation 
+ - [fpavogt] first public release!
+
+## [v2019.02.1]
+### Added:
+ - [fpavogt] added run_BWplot step
+ - [fpavogt] added WCS correction step
+### Changed:
+ - [fpavogt] worked a bit on refactoring the docstrings
+
+## [v2019.01.1]
+### Fixed:
+ - [fpavogt] revived the reddening module
+
+## [v2018.11.1]
+### Added:
+ - [fpavogt] added the 'raw_cube' name to fn_list for easy access
+
+## [v2018.11.0]
+### Added:
+ - [fpavogt] added sky-subtraction step
+ - [fpavogt] initial upload to Github, initial upload to pip
+### Changed:
+ - [fpavogt] ported brutus to python 3, renamed it to brutifus (available pip name)
+### Removed:
+ - [fpavogt] removed ppxf from brutifus (focus on SNRs for now)
+ - [fpavogt] removed pyqz from brutifus (outdated)
