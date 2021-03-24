@@ -8,7 +8,7 @@ brutifus. :heart_eyes: :tada:
 
 There are many ways that you can do so, including by:
 - [reporting a bug](#reporting-a-bug)
-- fixing an [known issue](https://github.com/brutifus/brutifus/issues?q=is%3Aissue+),
+- fixing a [known issue](https://github.com/brutifus/brutifus/issues?q=is%3Aissue+),
 - implementing a new functionality, and/or
 - improving the documentation:
   * in the code, with better docstrings
@@ -42,13 +42,13 @@ If you find something odd/wrong/broken with brutifus, first check if it is a [kn
 brutifus is primarly a Python package. But in practice, brutifus also includes a series of parameter and
 utilitarian files related to its Github repository, and a dedicated documentation hosted using Github pages.
 
-For the sake of clarity, and to facilitate the code maintenance, we list here (succinctly) a series of key facts about the brutifus code and its repository:
+For the sake of clarity, and to facilitate the code maintenance, we list here (succinctly) a series of key facts about the brutifus code, its repository, and the associated organization:
 
 1. **Source code:**
    * brutifus is distributed under the terms of the GNU General Public License v3.0 or later.
-   * brutifus adheres to a versioning system specifyin the year, month, and release it (during that month),
+   * brutifus adheres to a versioning system specifying the year, month, and release id (during that month),
      i.e. yyyy.mm.v
-   * The adopted styles are described [here](#styles).
+   * The adopted coding styles are described [here](#styles).
    * brutifus *operational* dependencies are specified in `setup.py`.
    * There is a human-readable [Changelog](CHANGELOG).
 
@@ -56,10 +56,12 @@ For the sake of clarity, and to facilitate the code maintenance, we list here (s
    * Contributions to brutifus get typically merged into the `develop` branch. Pull requests to the
      `master` branch should only originate from the `develop` branch.
    * Any successful pull request to the `master` branch should trigger a new code release.
+   <!--
    * A series of Github Actions are implemented for CI purposes. These include the execution of
      the brutifus tests on Windows, macOS and Linux, a linting of the code, a validation
      of the docs, and a check of the `CHANGELOG`. Upon any push to the `master` branch, the docs
      will also be automatically compiled and published onto the `brutifus.github.io` repository.
+     -->
    * The `.pylintrc` file refines the behavior of pylint for brutifus.
    * The `master` branch of the `brutifus` repository mirrors the latest release of the code.
      `develop` is the default branch of the repository: this is where the latest not-yet-released
@@ -68,7 +70,7 @@ For the sake of clarity, and to facilitate the code maintenance, we list here (s
 3. **Documentation:**
    * The brutifus documentation is generated using Sphinx, with the Read-the-docs theme. The compiled
      documentation is hosted on the `master` branch of the `brutifus.github.io` repository of the
-     [brutifus Github Organzation](https://github.com/brutifus/brutifus.github.io).
+     [brutifus Github Organization](https://github.com/brutifus/brutifus.github.io).
 
 ## Styles
 
@@ -126,23 +128,28 @@ For the sake of clarity, and to facilitate the code maintenance, we list here (s
 
    If `user.name` and `user.email` are missing or do not match those of your Github account, [change them](https://docs.github.com/en/free-pro-team@latest/github/setting-up-and-managing-your-github-user-account/setting-your-commit-email-address):
 
-       git config --local user.name "ID+username"
-       git config --local user.email "ID+username@users.noreply.github.com"
+       git config --global user.name "ID+username"
+       git config --global user.email "ID+username@users.noreply.github.com"
 
    **:closed_lock_with_key: Optional but recommended:** use a GPG key to sign your commits. Quoting from [the instructions](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/about-commit-signature-verification): "*Github will verify these signatures so other people will know that your commits come from a trusted source.*" See also [this SO post](https://superuser.com/questions/1512137/which-email-to-sign-commits-with-for-github-and-retain-privacy) and the reply by *Toby* if you use the *@users.noreply...* email for your commits. Do not forget
    to then actually enable git to auto-sign all commits:
 
        git config --global commit.gpgsign true
 
+0. If you are not a [brutifus collaborator](https://github.com/orgs/brutifus/teams), you will
+   have to fork the brutifus repository. If you'd like to become a collaborator instead, you should
+   contact the brutifus [dev team](https://github.com/orgs/brutifus/teams).
+
 1. Clone the `develop` branch locally:
 
-       git clone -b develop git@github.com:brutifus/brutifus.git your_branch_name
+        git clone -b develop git@github.com:brutifus/brutifus.git brutifus
 
+   :eyes: If you forked the repo, you should clone your copy of it instead.
    :warning: `develop` is the default branch for brutifus that contains all the latest *approved* changes. **Unless you have a good reason to do otherwise**, this is the branch you want to clone and branch-off from.
 
 2. Actually create your new branch locally:
 
-       cd your_branch_name
+       cd brutifus
        git checkout -b your_branch_name
 
 3. Check that it all went as expected:
@@ -155,6 +162,8 @@ For the sake of clarity, and to facilitate the code maintenance, we list here (s
 
        pip install -e ./
 
+   :warning: if you had brutifus already installed, you should remove it first: `pip uninstall brutifus`
+
 5. Modify the code locally. This could be the source code, or the docs `.rst` source files.
 
    :warning: Please read carefully (and adhere to!) the brutifus [style conventions](#styles) above.
@@ -164,8 +173,7 @@ For the sake of clarity, and to facilitate the code maintenance, we list here (s
        git add a_modified_file (OR possibly: git rm a_file_to_delete)
        git commit -m "Some useful, clear, and concise message. Use present tense."
 
-   You can/should also push your branch to the brutifus repository, if you want others to see what
-   you are up to:
+   You can/should also push your branch to the remote repository every now and then:
 
        git push origin your_branch_name
 
@@ -196,8 +204,9 @@ For the sake of clarity, and to facilitate the code maintenance, we list here (s
         git pull --rebase origin develop
 
     If this leads to conflicts that you are unsure about, get in touch with @brutifus-devs.
+    :warning: If you forked the brutifus repository, you'll first need to [sync your fork](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/syncing-a-fork).
 
-11. You can now push your branch to the brutifus repository. If warranted (it most likely will be!),
+11. You can now push your branch to the remote repository. If warranted (it most likely will be!),
     remember to update the `CHANGELOG` and add your name to the `AUTHORS` before doing so:
 
         git push -f origin your_branch_name
