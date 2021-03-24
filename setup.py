@@ -27,8 +27,7 @@ setup(
       "photutils >= 0.6",
       "PyYAML >=5.1",
       "sphinx",
-      "sphinx-rtd-theme"
-   ],
+      "sphinx-rtd-theme"],
 
    entry_points={'console_scripts': ['brutifus=brutifus.__main__:main']},
 

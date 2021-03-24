@@ -5,10 +5,10 @@
 .. |ascl| image:: https://img.shields.io/badge/ascl-1903.004-blue.svg?colorB=262255
    :target: http://ascl.net/1903.004
 
-.. |github| image:: https://img.shields.io/github/release/brutifus/brutifus.svg
+.. |github| image:: https://img.shields.io/github/release/brutifus/brutifus.svg?color=blueviolet
    :target: https://github.com/brutifus/brutifus/releases
 
-.. |pypi| image:: https://img.shields.io/pypi/v/brutifus.svg?colorB=<brightgreen>
+.. |pypi| image:: https://img.shields.io/pypi/v/brutifus.svg?color=green
    :target: https://pypi.python.org/pypi/brutifus/
 
 .. |last-commit| image:: https://img.shields.io/github/last-commit/brutifus/brutifus.svg?colorB=e6c000

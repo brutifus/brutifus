@@ -20,7 +20,7 @@ working directories.
 
 .. note::
 
-    I very much suggest to run a ``brutifus --setup`` for each project, rather than using
+    It is recommended to run a ``brutifus --setup`` for each project, rather than using
     a single processing area for all projects.
 
 

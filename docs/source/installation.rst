@@ -13,8 +13,8 @@ And that should take care of things.
 
 The most recent release of brutifus is also available for download from its
 `Github repository <https://github.com/fpavogt/fcmaker/releases/latest/>`_.
-Interested users can fork the brutifus repository if they want to get access to the
-latest updates not yet released. *Push requests* for bug fixes and new features are
+Interested users can fork the ``develop`` branch of the brutifus repository if they want to get access
+to the latest updates not yet released. *Push requests* for bug fixes and new features are
 welcome and will be examined in detail.
 
 Requirements
@@ -29,7 +29,7 @@ brutifus also relies on the following python packages, that will get automatical
 
 .. literalinclude:: ../../setup.py
     :language: python
-    :lines: 21-30
+    :lines: 20-30
 
 Testing the installation
 ------------------------

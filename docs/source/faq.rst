@@ -6,9 +6,8 @@ FAQ
 
 **Q**: What's with `brutus <https://github.com/fpavogt/brutus>`_? Is it the same as brutifus?
 
-   **A**: the brutus code is the ancestor to brutifus, and is now deprecated. It may be that
-   not all the functionalities of brutus will be implemented inside brutifus: it'll all
-   depend on what I use brutifus for.
+   **A**: the brutus code is the ancestor to brutifus, and is now deprecated. One should note that
+   not all the brutus capabilities were ported to brutifus.
 
 **Q**: I'm getting some weird LaTeX error message ... what is going on ?
 
