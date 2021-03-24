@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-#pylint: disable=C0103,W0311
-
 '''
 brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
-Copyright (C) 2018-2019,  F.P.A. Vogt
-
-----------------------------------------------------------------------------------------------------
+Copyright (C) 2018-2020,  F.P.A. Vogt
+Copyright (C) 2021, F.P.A. Vogt & J. Suherli
 
 This file contains some global metadata used throughout the brutifus code.
 
@@ -62,4 +59,3 @@ ffmt = {'MUSE': {'data':1, 'var':2, 'badpix':None,
         'WiFeS':{'data':0, 'error':1, 'badpix':2,
                  'funit':r'F$_\lambda$ [erg s$^{-1}$ cm$^{-2}$ \AA$^{-1}$]'},
        }
-      

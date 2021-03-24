@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-# disable bad variable names, 3 spaces for offset
-# pylint: disable=C0103,W0311
 '''
 brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
-Copyright (C) 2018-2019,  F.P.A. Vogt
-
-----------------------------------------------------------------------------------------------------
+Copyright (C) 2018-2020,  F.P.A. Vogt
+Copyright (C) 2021, F.P.A. Vogt & J. Suherli
 
 This file contains the master brutifus routines. Most of these routines call sub-routines,
 after setting the scene/loading datasets/etc ...
@@ -14,22 +11,6 @@ Any processing step MUST have a dediacted routine in this file called 'run_XXX',
 then refer to any existing/new brutifus/Python module.
 
 Created November 2018, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
-
-----------------------------------------------------------------------------------------------------
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 '''
 # --------------------------------------------------------------------------------------------------
 
@@ -75,318 +56,307 @@ warnings.filterwarnings("ignore", module='astropy.io.votable.tree')
 
 # --------------------------------------------------------------------------------------------------
 def run(procsteps_fn, params_fn):
-   ''' Run a given set of brutifus processing steps with certain parameters.
+    ''' Run a given set of brutifus processing steps with certain parameters.
 
-       :param procsteps_fn: filename containing the processing steps
-       :type procsteps_fn: string
-       :param params_fn: filename containing the scientific parameters
-       :type params_fn: string
+    Args:
+        procsteps_fn (str): filename containing the processing steps
+        params_fn (str): filename containing the scientific parameters
 
-   '''
+    '''
 
-   # Start keeping track of the time
-   start_time = datetime.datetime.now()
+    # Start keeping track of the time
+    start_time = datetime.datetime.now()
 
-   # Check that I was fed some proper parameters
-   if not os.path.isfile(params_fn):
-      raise Exception('Failed to load the parameter file %s.' % (params_fn))
+    # Check that I was fed some proper parameters
+    if not os.path.isfile(params_fn):
+        raise Exception('Failed to load the parameter file %s.' % (params_fn))
 
-   if not os.path.isfile(procsteps_fn):
-      raise Exception('Failed to load the procsteps file %s.' % (procsteps_fn))
+    if not os.path.isfile(procsteps_fn):
+        raise Exception('Failed to load the procsteps file %s.' % (procsteps_fn))
 
-   # Load the parameter file
-   params = yaml.load(open(params_fn), Loader=yaml.SafeLoader)
+    # Load the parameter file
+    params = yaml.load(open(params_fn), Loader=yaml.SafeLoader)
 
-   # Load the proc steps
-   procsteps = yaml.load(open(procsteps_fn), Loader=yaml.SafeLoader)
+    # Load the proc steps
+    procsteps = yaml.load(open(procsteps_fn), Loader=yaml.SafeLoader)
 
-   # Disable the use of system-Latex if required ... (Why would anyone ask such a thing?!)
-   if not params['systemtex']:
-      bifus_m.usetex = False
-      bifus_m.plotstyle = os.path.join(bifus_m.bifus_dir, 'mpl_styles',
-                                       'brutifus_plots_nolatex.mplstyle')
-   else:
-      bifus_m.usetex = True
-      bifus_m.plotstyle = os.path.join(bifus_m.bifus_dir, 'mpl_styles',
-                                       'brutifus_plots.mplstyle')
+    # Disable the use of system-Latex if required ... (Why would anyone ask such a thing?!)
+    if not params['systemtex']:
+        bifus_m.usetex = False
+        bifus_m.plotstyle = os.path.join(bifus_m.bifus_dir, 'mpl_styles',
+                                         'brutifus_plots_nolatex.mplstyle')
+    else:
+        bifus_m.usetex = True
+        bifus_m.plotstyle = os.path.join(bifus_m.bifus_dir, 'mpl_styles',
+                                         'brutifus_plots.mplstyle')
 
-   # Set the chosen plot style
-   plt.style.use(bifus_m.plotstyle)
+    # Set the chosen plot style
+    plt.style.use(bifus_m.plotstyle)
 
-   # Is there a dictionary of filenames already in place ? If not, create one
-   fn = os.path.join(bifus_m.prod_loc, bifus_m.get_fn_list_fn(params['target']))
+    # Is there a dictionary of filenames already in place ? If not, create one
+    fn = os.path.join(bifus_m.prod_loc, bifus_m.get_fn_list_fn(params['target']))
 
-   if not os.path.isfile(fn):
-      if params['verbose']:
-         print('-> This looks like a fresh run. Creating an emtpy dictionary of filenames.')
-         print('-> Storing it in %s.' % (fn))
+    if not os.path.isfile(fn):
+        if params['verbose']:
+            print('-> This looks like a fresh run. Creating an emtpy dictionary of filenames.')
+            print('-> Storing it in %s.' % (fn))
 
-      # For now, all I know is where the raw data is located
-      fn_list = {'raw_cube': os.path.join(params['data_loc'], params['data_fn']),
-                }
+        # For now, all I know is where the raw data is located
+        fn_list = {'raw_cube': os.path.join(params['data_loc'], params['data_fn'])}
 
-      # Make a quick check to make sure we can find the data!
-      if not os.path.isfile(fn_list['raw_cube']):
-         raise Exception('Raw file not found: %s' % fn_list['raw_cube'])
+        # Make a quick check to make sure we can find the data!
+        if not os.path.isfile(fn_list['raw_cube']):
+            raise Exception('Raw file not found: %s' % fn_list['raw_cube'])
 
-      # Save it
-      f = open(fn, 'wb')
-      pickle.dump(fn_list, f)
-      f.close()
+        # Save it
+        f = open(fn, 'wb')
+        pickle.dump(fn_list, f)
+        f.close()
 
-   # Execute the recipe, by calling all the individual master step functions
-   prev_suffix = None
-   for step in procsteps:
-      step_name = step['step']
-      step_run = step['run']
-      step_suffix = step['suffix']
-      step_args = step['args']
-      func_name = 'run_' + step_name
+    # Execute the recipe, by calling all the individual master step functions
+    for step in procsteps:
+        step_name = step['step']
+        step_run = step['run']
+        step_suffix = step['suffix']
+        step_args = step['args']
+        func_name = 'run_' + step_name
 
-      # Call a function based on a string ... pretty sweet !
-      #func = getattr(func_name)
-      func = globals()[func_name]
+        # Call a function based on a string ... pretty sweet !
+        #func = getattr(func_name)
+        func = globals()[func_name]
 
-      if step_run:
-         # Here, I want to maintain a dictionary of filenames, to be used accross functions
-         # For each step, load the dictionary, feed it to the function, and save it update
-         # it when it's all done. Each function returns the updated dictionary !
-         fn = os.path.join(bifus_m.prod_loc, bifus_m.get_fn_list_fn(params['target']))
-         f = open(fn, 'rb')
-         fn_list = pickle.load(f)
-         f.close()
+        if step_run:
+            # Here, I want to maintain a dictionary of filenames, to be used accross functions
+            # For each step, load the dictionary, feed it to the function, and save it update
+            # it when it's all done. Each function returns the updated dictionary !
+            fn = os.path.join(bifus_m.prod_loc, bifus_m.get_fn_list_fn(params['target']))
+            f = open(fn, 'rb')
+            fn_list = pickle.load(f)
+            f.close()
 
-         # Launch the function
-         fn_list = func(fn_list, params, suffix=step_suffix, **step_args)
+            # Launch the function
+            fn_list = func(fn_list, params, suffix=step_suffix, **step_args)
 
-         # Save the updated dictionary of filenames
-         f = open(fn, 'wb')
-         fn_list = pickle.dump(fn_list, f)
-         f.close()
+            # Save the updated dictionary of filenames
+            f = open(fn, 'wb')
+            fn_list = pickle.dump(fn_list, f)
+            f.close()
 
-   # All done !
-   duration = datetime.datetime.now() - start_time
-   print(' ')
-   print('All done in %.01f seconds.' % duration.total_seconds())
-   print(' ')
-
+    # All done !
+    duration = datetime.datetime.now() - start_time
+    print(' ')
+    print('All done in %.01f seconds.' % duration.total_seconds())
+    print(' ')
 
 # --------------------------------------------------------------------------------------------------
 def run_adjust_WCS(fn_list, params, suffix=None, name_in=None, name_out=None):
-   ''' Adjust the WCS solution of the cube using Gaia.
+    ''' Adjust the WCS solution of the cube using Gaia.
 
-   :param fn_list: The dictionary containing all filenames created by brutifus.
-   :type fn_list: dict
-   :param params:  The dictionary containing all paramaters set by the user.
-   :type params: dict
-   :param suffix: The tag of this step, to be used in all files generated for rapid id.
-   :type suffix: str
-   :param name_in: name tag to identify which cube to use to run the routine
-   :type name_in: str
-   :param name_out: name tag to identify which cube comes out of the routine
-   :type name_out: str
+    Args:
+        fn_list (dict): The dictionary containing all filenames created by brutifus.
+        params (dict):  The dictionary containing all paramaters set by the user.
+        suffix (str): The tag of this step, to be used in all files generated for rapid id.
+        name_in (str): name tag to identify which cube to use to run the routine
+        name_out (str): name tag to identify which cube comes out of the routine
 
-   :return: The updated dictionary of filenames.
-   :rtype: dict
+    Returns:
+        dict: The updated dictionary of filenames.
 
-   .. note:: Proper motions for the GAIA entries are propagated to the DATE-OBS of the data.
-             Source identification in white-light image based on :class:`photutils.DAOStarFinder`
+    .. note:: Proper motions for the GAIA entries are propagated to the DATE-OBS of the data.
+              Source identification in white-light image based on :class:`photutils.DAOStarFinder`
 
-   .. todo:: Avoid using a hard-coded pixel FWHM for the cross-correlation?
+    .. todo:: Avoid using a hard-coded pixel FWHM for the cross-correlation ?
 
-   '''
+    '''
 
-   if params['verbose']:
-      print('-> Adjusting the cube WCS using Gaia.')
+    if params['verbose']:
+        print('-> Adjusting the cube WCS using Gaia.')
 
-   # Get the data
-   [[lams, data, error], [header0, header_data, header_error]] = \
-      bifus_t.extract_cube(fn_list[name_in], params['inst'])
+    # Get the data
+    [[lams, data, error],
+     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
-   # Build a white-light image
-   wl_im = np.nansum(data, axis=0)
+    # Build a white-light image
+    wl_im = np.nansum(data, axis=0)
 
-   # Save this 2D white-light image
-   #hdu0 = fits.PrimaryHDU(None, header0)
-   hdu1 = fits.PrimaryHDU(wl_im)
-   # Make sure the WCS coordinates are included as well
-   hdu1 = bifus_t.hdu_add_wcs(hdu1, header_data)
-   # Also include a brief mention about which version of brutifus is being used
-   hdu1 = bifus_t.hdu_add_brutifus(hdu1, suffix)
+    # Save this 2D white-light image
+    #hdu0 = fits.PrimaryHDU(None, header0)
+    hdu1 = fits.PrimaryHDU(wl_im)
+    # Make sure the WCS coordinates are included as well
+    hdu1 = bifus_t.hdu_add_wcs(hdu1, header_data)
+    # Also include a brief mention about which version of brutifus is being used
+    hdu1 = bifus_t.hdu_add_brutifus(hdu1, suffix)
 
-   # Write the file!
-   hdu = fits.HDUList(hdus=[hdu1])
+    # Write the file!
+    hdu = fits.HDUList(hdus=[hdu1])
 
-   fn_list['white_light'] = os.path.join(bifus_m.prod_loc,
-                                         suffix + '_' + params['target'] + '_white_light.fits')
-   hdu.writeto(fn_list['white_light'], overwrite=True)
+    fn_list['white_light'] = os.path.join(bifus_m.prod_loc,
+                                          suffix + '_' + params['target'] + '_white_light.fits')
+    hdu.writeto(fn_list['white_light'], overwrite=True)
 
-   # Get the dx dy corrections to be applied
-   (dx, dy) = bifus_wcs.get_linear_WCS_corr(fn_list['white_light'],
-                                            obstime=Time(header0['DATE-OBS']),
-                                            verbose=params['verbose'],
-                                            suffix=suffix, target=params['target'])
+    # Get the dx dy corrections to be applied
+    (dx, dy) = bifus_wcs.get_linear_WCS_corr(fn_list['white_light'],
+                                             obstime=Time(header0['DATE-OBS']),
+                                             verbose=params['verbose'],
+                                             suffix=suffix, target=params['target'])
 
-   # Then also correct the WCS in the datacube
-   hdu0 = fits.PrimaryHDU(None, header0)
-   hdu1 = fits.ImageHDU(data, header_data)
-   hdu2 = fits.ImageHDU(error, header_error)
+    # Then also correct the WCS in the datacube
+    hdu0 = fits.PrimaryHDU(None, header0)
+    hdu1 = fits.ImageHDU(data, header_data)
+    hdu2 = fits.ImageHDU(error, header_error)
 
-   for hdu in [hdu1, hdu2]:
-      # Also include a brief mention about which version of brutifus is being used
-      hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
+    for hdu in [hdu1, hdu2]:
+        # Also include a brief mention about which version of brutifus is being used
+        hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
 
-      # And update the WCS value
-      hdu.header['CRPIX1'] = hdu.header['CRPIX1'] - dx
-      hdu.header['CRPIX2'] = hdu.header['CRPIX2'] - dy
+        # And update the WCS value
+        hdu.header['CRPIX1'] = hdu.header['CRPIX1'] - dx
+        hdu.header['CRPIX2'] = hdu.header['CRPIX2'] - dy
 
-   # Add the filename to the dictionary of filenames
-   fn_list[name_out] = os.path.join(bifus_m.prod_loc,
-                                    suffix + '_' + params['target'] + '_wcs-corr.fits')
-   hdu = fits.HDUList(hdus=[hdu0, hdu1, hdu2])
-   hdu.writeto(fn_list[name_out], overwrite=True)
+    # Add the filename to the dictionary of filenames
+    fn_list[name_out] = os.path.join(bifus_m.prod_loc,
+                                     suffix + '_' + params['target'] + '_wcs-corr.fits')
+    hdu = fits.HDUList(hdus=[hdu0, hdu1, hdu2])
+    hdu.writeto(fn_list[name_out], overwrite=True)
 
-   return fn_list
+    return fn_list
 
 # --------------------------------------------------------------------------------------------------
 def run_crude_snr_maps(fn_list, params, suffix=None, name_in=None,
                        zcorr_lams=False):
-   ''' Computes a crude S/N ratio for a continuum range or emission line.
+    ''' Computes a crude S/N ratio for a continuum range or emission line.
 
-   This function computes the SNR maps for the continuum or emission lines.
-   It also creates a map of spaxels with any signal at all.
-   The resulting maps are saved to a fits file with full header and WCS coordinates.
+    This function computes the SNR maps for the continuum or emission lines.
+    It also creates a map of spaxels with any signal at all.
+    The resulting maps are saved to a fits file with full header and WCS coordinates.
 
-   :param fn_list: The dictionary containing all filenames created by brutifus.
-   :type fn_list: dict
-   :param params:  The dictionary containing all paramaters set by the user.
-   :type params: dict
-   :param suffix: The tag of this step, to be used in all files generated for rapid id.
-   :type suffix: str
-   :param name_in: name tag to identify which cube to use to run the routine.
-   :type name_in: str
-   :param zcorr_lams: True -> correct the wavelength range for the target redshift.
-   :type zcorr_lams: bool
+    Args:
+        fn_list (dict): The dictionary containing all filenames created by brutifus.
+        params (dict):  The dictionary containing all paramaters set by the user.
+        suffix (str): The tag of this step, to be used in all files generated for rapid id.
+        name_in (str): name tag to identify which cube to use to run the routine.
+        zcorr_lams (bool, optional): True -> correct the wavelength range for the target redshift.
+            Defaults to False.
 
-   :return: The updated dictionary of filenames.
-   :rtype: dict
+    Returns:
+        dict: The updated dictionary of filenames.
 
-   .. note:: This function is a "first guess" of the SNR for latter use in the code. A more
-             reliable measure of the SNR for the emission line should be computed after they
-             have been fitted.
-   '''
+    .. note:: This function is a "first guess" of the SNR for latter use in the code. A more
+              reliable measure of the SNR for the emission line should be computed after they
+              have been fitted.
+    '''
 
-   if params['verbose']:
-      print('-> Computing the SNR maps.')
+    if params['verbose']:
+        print('-> Computing the SNR maps.')
 
-   # Get the data
-   [[lams, data, error], [header0, header_data, header_error]] = \
-      bifus_t.extract_cube(fn_list[name_in], params['inst'])
+    # Get the data
+    [[lams, data, error],
+     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
-   # Take redshift into account ?
-   if zcorr_lams:
-      lams /= params['z_target'] + 1.
+    # Take redshift into account ?
+    if zcorr_lams:
+        lams /= params['z_target'] + 1.
 
-   # Prepare a storage list
-   snrs = []
+    # Prepare a storage list
+    snrs = []
 
-   # Here, hide those stupid warnings about all-NaNs slices
-   #with warnings.catch_warnings():
-      #warnings.simplefilter("ignore", category=RuntimeWarning)
+    # Here, hide those stupid warnings about all-NaNs slices
+    #with warnings.catch_warnings():
+        #warnings.simplefilter("ignore", category=RuntimeWarning)
 
-   for r in params['snr_ranges']:
+    for r in params['snr_ranges']:
 
-         # The signal
-         if r[-1] == 'c':
+        # The signal
+        if r[-1] == 'c':
             s = np.nanmedian(data[(lams >= r[0])*(lams <= r[1]), :, :], axis=0)
 
-         elif r[-1] == 'e':
+        elif r[-1] == 'e':
             s = np.nanmax(data[(lams >= r[0]) * (lams <= r[1]), :, :], axis=0)
 
-         else:
+        else:
             raise Exception('S/N calculation type unknown: %s' % r[-1])
 
-         # The noise = STD over the range -> NOT strictly correct for high S/N stars !!!
-         n = np.nanstd(data[(lams >= r[0])*(lams <= r[1]), :, :], axis=0)
+        # The noise = STD over the range -> NOT strictly correct for high S/N stars !!!
+        n = np.nanstd(data[(lams >= r[0])*(lams <= r[1]), :, :], axis=0)
 
-         # Compute S/N
-         snr = s/n
+        # Compute S/N
+        snr = s/n
 
-         # Ensure this is always >= 0
-         snr[snr < 0] = 0
+        # Ensure this is always >= 0
+        snr[snr < 0] = 0
 
-         # Store it for later
-         snrs += [snr]
+        # Store it for later
+        snrs += [snr]
 
-   # And create a map with just spaxels that have any data (i.e. have been observed).
-   anything = np.ones_like(data[0, :, :])
-   anything[np.all(np.isnan(data), axis=0)] = np.nan
+    # And create a map with just spaxels that have any data (i.e. have been observed).
+    anything = np.ones_like(data[0, :, :])
+    anything[np.all(np.isnan(data), axis=0)] = np.nan
 
-   # Very well, now let's create a fits file to save this as required.
-   hdu0 = fits.PrimaryHDU(None, header0)
-   hdus = [hdu0]
+    # Very well, now let's create a fits file to save this as required.
+    hdu0 = fits.PrimaryHDU(None, header0)
+    hdus = [hdu0]
 
-   # Add the regions where I have data ... always useful !
-   hdu = fits.ImageHDU(anything)
-   # Make sure the WCS coordinates are included as well
-   hdu = bifus_t.hdu_add_wcs(hdu, header_data)
-   # Also include a brief mention about which version of brutifus is being used
-   hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
-   # For reference, also include the line/region this maps are based on
-   hdu.header['B_SNRANG'] = ('%.1f-%.1f' % (lams[0], lams[-1]), 'spectral range (A) used for SNR')
-   hdu.header['B_SNTYPE'] = ('x', 'binary map: NaN= no data, 1 = valid spectra')
+    # Add the regions where I have data ... always useful !
+    hdu = fits.ImageHDU(anything)
+    # Make sure the WCS coordinates are included as well
+    hdu = bifus_t.hdu_add_wcs(hdu, header_data)
+    # Also include a brief mention about which version of brutifus is being used
+    hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
+    # For reference, also include the line/region this maps are based on
+    hdu.header['B_SNRANG'] = ('%.1f-%.1f' % (lams[0], lams[-1]), 'spectral range (A) used for SNR')
+    hdu.header['B_SNTYPE'] = ('x', 'binary map: NaN= no data, 1 = valid spectra')
 
-   hdus += [hdu]
+    hdus += [hdu]
 
-   # Now also loop through all the maps I have created
-   for (i, r) in enumerate(params['snr_ranges']):
+    # Now also loop through all the maps I have created
+    for (i, r) in enumerate(params['snr_ranges']):
 
-      hdu = fits.ImageHDU(snrs[i])
+        hdu = fits.ImageHDU(snrs[i])
 
-      # Make sure the WCS coordinates are included as well
-      hdu = bifus_t.hdu_add_wcs(hdu, header_data)
+        # Make sure the WCS coordinates are included as well
+        hdu = bifus_t.hdu_add_wcs(hdu, header_data)
 
-      # Also include a brief mention about which version of brutifus is being used
-      hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
+        # Also include a brief mention about which version of brutifus is being used
+        hdu = bifus_t.hdu_add_brutifus(hdu, suffix)
 
-      # For reference, also include the line/region this maps are based on
-      hdu.header['B_SNRANG'] = ('%.1f-%.1f' % (r[0], r[1]), 'spectral range (A) used for SNR')
-      hdu.header['B_SNTYPE'] = ('%s' % r[-1], '"c"ontinuum, or "e"mission')
+        # For reference, also include the line/region this maps are based on
+        hdu.header['B_SNRANG'] = ('%.1f-%.1f' % (r[0], r[1]), 'spectral range (A) used for SNR')
+        hdu.header['B_SNTYPE'] = ('%s' % r[-1], '"c"ontinuum, or "e"mission')
 
-      hdus += [hdu]
+        hdus += [hdu]
 
-   # Write the file!
-   hdu = fits.HDUList(hdus=hdus)
+    # Write the file!
+    hdu = fits.HDUList(hdus=hdus)
 
-   fn_list['snr_maps'] = os.path.join(bifus_m.prod_loc,
-                                      suffix+'_'+params['target']+'_snr-maps.fits')
+    fn_list['snr_maps'] = os.path.join(bifus_m.prod_loc,
+                                       suffix+'_'+params['target']+'_snr-maps.fits')
 
-   hdu.writeto(fn_list['snr_maps'], overwrite=True)
+    hdu.writeto(fn_list['snr_maps'], overwrite=True)
 
-   # Make some plots
-   # First, plot the region with any signal at all
-   bifus_p.make_2Dplot(fn_list['snr_maps'], 1,
-                       os.path.join(bifus_m.plot_loc,
-                                    suffix + '_' + params['target'] +
-                                    '_valid_spectra.pdf'),
-                       #contour_fn = None,
-                       #contour_ext = None,
-                       #contour_levels = [None],
-                       vlims=[0, 1.5],
-                       cmap=None, cblabel=None, scalebar=params['scalebar'])
+    # Make some plots
+    # First, plot the region with any signal at all
+    bifus_p.make_2Dplot(fn_list['snr_maps'], 1,
+                        os.path.join(bifus_m.plot_loc,
+                                     suffix + '_' + params['target'] +
+                                     '_valid_spectra.pdf'),
+                        #contour_fn = None,
+                        #contour_ext = None,
+                        #contour_levels = [None],
+                        vlims=[0, 1.5],
+                        cmap=None, cblabel=None, scalebar=params['scalebar'])
 
-   # Alright, let's take out the big guns ...
-   for (i, r) in enumerate(params['snr_ranges']):
+    # Alright, let's take out the big guns ...
+    for (i, r) in enumerate(params['snr_ranges']):
 
-      bifus_p.make_2Dplot(fn_list['snr_maps'], i+2,
-                          os.path.join(bifus_m.plot_loc,
-                                       suffix + '_' + params['target'] +
-                                       '_snr_%.1f-%.1f.pdf' % (r[0], r[1])),
-                          vlims=[0, 50], cmap='alligator_r',
-                          cblabel=r"S/N ('%s') %.1f\AA-%.1f\AA" % (r[-1], r[0], r[1]),
-                          scalebar=params['scalebar'])
+        bifus_p.make_2Dplot(fn_list['snr_maps'], i+2,
+                            os.path.join(bifus_m.plot_loc,
+                                         suffix + '_' + params['target'] +
+                                         '_snr_%.1f-%.1f.pdf' % (r[0], r[1])),
+                            vlims=[0, 50], cmap='alligator_r',
+                            cblabel=r"S/N ('%s') %.1f\AA-%.1f\AA" % (r[-1], r[0], r[1]),
+                            scalebar=params['scalebar'])
 
-   return fn_list
+    return fn_list
 
 # --------------------------------------------------------------------------------------------------
 def run_plot_BW(fn_list, params, suffix=None, name_in=None,
