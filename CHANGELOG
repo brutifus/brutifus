@@ -20,6 +20,7 @@ brutifus follows a year.month.release versioning scheme, i.e.: yyyy.mm.v
 ### Added:
  - [fpavogt, 2021-03-25] Add CI Actions for docs (auto-checks and auto-publish).
  - [fpavogt, 2021-03-25] Add pylint CI action, CONTRIBUTING guidelines, CODE_OF_CONDUCT.
+ - [fpavogt, 2021-03-25] Add pytest crude infrastructure, including dedicated CI action.
 ### Fixed:
  - [fpavogt, 2021-03-25] General code cleanup using pylint.
  - [fpavogt, 2021-03-24] Cleanup the docs.

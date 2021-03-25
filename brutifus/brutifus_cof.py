@@ -54,7 +54,7 @@ def lowess_fit(spec, lams, frac=0.05, it=5):
     '''
 
     # Only do the fit if there is some signal. Avoid an ugly warning in the prompt.
-    if np.all(np.isnan(spec)):
+    if all(np.isnan(spec)):
         fit = np.zeros_like(spec) * np.nan
     else:
         fit = lowess(spec, lams, frac=frac, it=it, is_sorted=True, missing='drop',
