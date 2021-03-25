@@ -162,7 +162,7 @@ def get_fig_dims(nx, ny):
 
     Returns:
         list: list containing the figure parameters [width, height, height_ratios,
-                 width_ratios, left, right, botom, top, wspace, hspace]
+            width_ratios, left, right, botom, top, wspace, hspace]
     '''
 
     fig_height = bifus_m.margin_top + bifus_m.cb_thick + bifus_m.margin_bottom + \
