@@ -10,7 +10,6 @@ Created November 2018, F.P.A. Vogt - frederic.vogt@alumni.anu.edu.au
 import os
 from setuptools import setup # Always prefer setuptools over distutils
 
-
 # Run the version file
 v = open(os.path.join('.', 'brutifus', 'brutifus_version.py'))
 version = [l.split("'")[1] for l in v.readlines() if '__version__' in l][0]
@@ -35,9 +34,7 @@ setup(
         "astroquery >= 0.3.4",
         "statsmodels >= 0.9.0",
         "photutils >= 0.6",
-        "PyYAML >=5.1",
-        "sphinx",
-        "sphinx-rtd-theme"],
+        "PyYAML >=5.1"],
 
     entry_points={'console_scripts': ['brutifus=brutifus.__main__:main']},
 

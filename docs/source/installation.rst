@@ -23,13 +23,13 @@ brutifus is written in Python 3. It is compatible with he following versions:
 
 .. literalinclude:: ../../setup.py
     :language: python
-    :lines: 19
+    :lines: 28
 
 brutifus also relies on the following python packages, that will get automatically installed by pip:
 
 .. literalinclude:: ../../setup.py
     :language: python
-    :lines: 20-30
+    :lines: 29-37
 
 Testing the installation
 ------------------------
