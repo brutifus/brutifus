@@ -56,12 +56,10 @@ For the sake of clarity, and to facilitate the code maintenance, we list here (s
    * Contributions to brutifus get typically merged into the `develop` branch. Pull requests to the
      `master` branch should only originate from the `develop` branch.
    * Any successful pull request to the `master` branch should trigger a new code release.
-   <!--
    * A series of Github Actions are implemented for CI purposes. These include the execution of
      the brutifus tests on Windows, macOS and Linux, a linting of the code, a validation
      of the docs, and a check of the `CHANGELOG`. Upon any push to the `master` branch, the docs
      will also be automatically compiled and published onto the `brutifus.github.io` repository.
-     -->
    * The `.pylintrc` file refines the behavior of pylint for brutifus.
    * The `master` branch of the `brutifus` repository mirrors the latest release of the code.
      `develop` is the default branch of the repository: this is where the latest not-yet-released
