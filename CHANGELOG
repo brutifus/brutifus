@@ -12,15 +12,18 @@ brutifus follows a year.month.release versioning scheme, i.e.: yyyy.mm.v
   - set the color of NaN pixels in plots ... (see astropy bug `[8165] <https://github.com/astropy/astropy/issues/8165>`_)
   - when drawing contours in `run_skysub()`, show the actual pixel edges
   - allow for an automated selection of the sky areas -> requires a better snr estimate ?
-  - (?) use `config.parser` to feed in the parameters, instead of YAML 
+  - (?) use `config.parser` to feed in the parameters, instead of YAML
   - (?) add scalebar to plots ... tricky: what if pix scale not uniform, North not up, etc ...
 
 
 ## [Unreleased]
 ### Added:
+ - [fpavogt, 2021-03-25] Added pylint CI action, CONTRIBUTING guidelines, CODE_OF_CONDUCT.
 ### Fixed:
+ - [fpavogt, 2021-03-25] General code cleanup using pylint.
+ - [fpavogt, 2021-03-24] Cleanup the docs.
 ### Changed:
- - [fpavogt, 2021-03-17] Moved the changelog to a dedicated CHANGELOG file, and switch to semantic versioning
+ - [fpavogt, 2021-03-17] Moved the changelog to a dedicated CHANGELOG file, and added dedicated CI action.
 ### Deprecated:
 ### Removed:
 ### Security:
@@ -59,7 +62,7 @@ brutifus follows a year.month.release versioning scheme, i.e.: yyyy.mm.v
 
 ## [v2019.02.3]
 ### Changed:
- - following the suggestion from Nick Whyborn, use image convolution to find the best 
+ - following the suggestion from Nick Whyborn, use image convolution to find the best
    spatial shift required to anchor the cube WCS on Gaia.
 ### Removed:
  - removed all references to aplpy
@@ -71,7 +74,7 @@ brutifus follows a year.month.release versioning scheme, i.e.: yyyy.mm.v
  - [fpavogt] fixed all docstrings
  - [fpavogt] cleaned up code of all old brutus bits not (yet) ported to brutifus.
 ### Changed:
- - [fpavogt] started working on documentation 
+ - [fpavogt] started working on documentation
  - [fpavogt] first public release!
 
 ## [v2019.02.1]
