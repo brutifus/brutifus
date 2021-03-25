@@ -28,17 +28,16 @@ tmp_loc = 'brutifus_tmp'
 
 
 def get_fn_list_fn(target):
-   ''' Returns the filename of the storage pickle for all the filenames used by the code
+    ''' Returns the filename of the storage pickle for all the filenames used by the code.
 
-      :param target: name of the target/object to be processed
-      :type target: string
+    Args:
+        target (str): name of the target/object to be processed.
 
+    Returns:
+        str: the pickled dictionnary filename.
+    '''
 
-      :return: the pickled dictionary filename
-      :rtype: string
-   '''
-
-   return 'bifus_fn-list_%s.pkl' % (target) # Name of the dictionary for filenames
+    return 'bifus_fn-list_%s.pkl' % (target) # Name of the dictionary for filenames
 
 # ---| Plotting parameters |------------------------------------------------------------------------
 

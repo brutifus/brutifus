@@ -16,47 +16,45 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 # --------------------------------------------------------------------------------------------------
 
 def lowess_fit(spec, lams, frac=0.05, it=5):
-   ''' Fit a spectrum using a Locally Weighted Scatterplot Smoothing approach.
+    ''' Fit a spectrum using a Locally Weighted Scatterplot Smoothing approach.
 
-   Wraps around statsmodels.nonparametric.smoothers_lowess.lowess().
+    Wraps around statsmodels.nonparametric.smoothers_lowess.lowess().
 
-   :param spec: The input spectrum.
-   :type spec: 1-D numpy array
-   :param lams: The corresponding wavelength array.
-   :type lams: 1-D numpy array
-   :param frac: Between 0 and 1. The fraction of the data used when estimating each y-value.
-                [From the statsmodel lowess function]
-   :type frac: float [default:0.05]
-   :param it: The number of residual-based reweightings to perform.
-              [From the statsmodel lowess function]
-   :type it: int [default:5]
+    Args:
+        spec (ndarray): The input spectrum.
+        lams (ndarray): The corresponding wavelength array.
+        frac (float, optional): Between 0 and 1. The fraction of the data used when estimating each
+            y-value. See the statsmodel lowess function for details. Defaults to 0.05
+        it (int, optional): The number of residual-based reweightings to perform.
+            See the statsmodel lowess function for details. Defaults to 5.
 
-   :return: The fitted array, with size equal to spec.
-   :rtype: numpy array
+    Returns:
+        ndarray: The fitted array, with size equal to spec.
 
-   .. note:: This function fits a spectrum using a LOWESS (Locally Weighted Scatterplot
-             Smoothing) technique, described in:
-             Cleveland, W.S. (1979) Robust Locally Weighted Regression and Smoothing
-             Scatterplots. Journal of the American Statistical Association 74 (368): 829-836.
+    .. note:: This function fits a spectrum using a LOWESS (Locally Weighted Scatterplot
+              Smoothing) technique, described in:
+              Cleveland, W.S. (1979) Robust Locally Weighted Regression and Smoothing
+              Scatterplots. Journal of the American Statistical Association 74 (368): 829-836.
 
-             This is robust to outliers (hot pixels, cosmics), and is also efficient to
-             ignore emission lines. frac=0.05 and it=5 seem to work very fine for spectra
-             of any SNR, both lousy with no continuum, and good ones in the center of
-             galaxies - modulo the stellar absorption features which are of course
-             "ignored" by the LOWESS routine.
+              This is robust to outliers (hot pixels, cosmics), and is also efficient to
+              ignore emission lines. frac=0.05 and it=5 seem to work very fine for spectra
+              of supernova remnants, including for those with strong foreground/background stellar
+              continuum.
 
-   ..warning:: If you have broad emission line in the spectrum, you want to be *very*
+    .. warning:: Users should not forget that this method will NOT remove stellar absorption lines !
+
+    .. warning:: If you have broad emission lines in your spectra, you will want to be *very*
                careful with LOWESS !!!
 
-   '''
+    '''
 
-   # Only do the fit if there is some signal. Avoid an ugly warning in the prompt.
-   if np.all(np.isnan(spec)):
-      fit = np.zeros_like(spec) * np.nan
-   else:
-      fit = lowess(spec, lams, frac=frac, it=it, is_sorted=True, missing='drop',
-                   return_sorted=False)
+    # Only do the fit if there is some signal. Avoid an ugly warning in the prompt.
+    if np.all(np.isnan(spec)):
+        fit = np.zeros_like(spec) * np.nan
+    else:
+        fit = lowess(spec, lams, frac=frac, it=it, is_sorted=True, missing='drop',
+                     return_sorted=False)
 
-   return fit
+    return fit
 
 # --------------------------------------------------------------------------------------------------
