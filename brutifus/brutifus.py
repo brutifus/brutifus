@@ -173,7 +173,7 @@ def run_adjust_WCS(fn_list, params, suffix=None, name_in=None, name_out=None):
         print('-> Adjusting the cube WCS using Gaia.')
 
     # Get the data
-    [[lams, data, error],
+    [[_, data, error],
      [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
     # Build a white-light image
@@ -250,8 +250,8 @@ def run_crude_snr_maps(fn_list, params, suffix=None, name_in=None,
         print('-> Computing the SNR maps.')
 
     # Get the data
-    [[lams, data, error],
-     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
+    [[lams, data, _],
+     [header0, header_data, _]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
     # Take redshift into account ?
     if zcorr_lams:
@@ -399,8 +399,8 @@ def run_plot_BW(fn_list, params, suffix=None, name_in=None,
             item *= int(np.ceil(len(bands)/len(item)))
 
     # Get the data
-    [[lams, data, error],
-     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
+    [[lams, data, _],
+     [_, header_data, _]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
     # Step 1: Construct individual images for each band
     for (i, band) in enumerate(bands):
@@ -488,8 +488,8 @@ def run_plot_RGB(fn_list, params, suffix=None, name_in=None,
             item *= int(np.ceil(len(bands)/len(item)))
 
     # Get the data
-    [[lams, data, error],
-     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
+    [[lams, data, _],
+     [_, header_data, _]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
     # Step 1: Construct individual images for each band
     for (i, band) in enumerate(bands):
@@ -558,7 +558,7 @@ def run_sky_sub(fn_list, params, suffix=None, name_in=None, name_out=None):
 
     # Get the data
     [[lams, data, error],
-     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
+     [header0, header_data, _]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
     # Assemble a 2D map of the sky spaxels
     sky_spaxels = np.zeros_like(data[0, :, :])
@@ -699,7 +699,7 @@ def run_gal_dered(fn_list, params, suffix=None, name_in=None, name_out=None):
 
     # Get the data
     [[lams, data, error],
-     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
+     [header0, header_data, _]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
     # Compute Alambda
     alams = bifus_red.alam(lams, params['Ab'], params['Av'], curve=params['gal_curve'],
@@ -778,8 +778,8 @@ def run_fit_continuum(fn_list, params, suffix=None, name_in=None,
     # between each row.
 
      # Get the data
-    [[lams, data, error],
-     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
+    [[lams, data, _],
+     [_, header_data, _]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
     # I also need to load the SNR cube to know where I have data I want to fit
     '''
@@ -834,7 +834,7 @@ def run_fit_continuum(fn_list, params, suffix=None, name_in=None,
 
         # Build a list of spectra to be fitted
         specs = [data[:, i, row] * good_spaxels[i] for i in range(header_data['NAXIS2'])]
-        errs = [error[:, i, row] * good_spaxels[i] for i in range(header_data['NAXIS2'])]
+        #errs = [error[:, i, row] * good_spaxels[i] for i in range(header_data['NAXIS2'])]
 
         # Set up the multiprocessing pool of workers
         if params['multiprocessing']:
@@ -922,8 +922,8 @@ def run_make_continuum_cube(fn_list, params, suffix=None, method='lowess'):
         print('-> Constructing the datacube for the continuum fitting (%s).' % method)
 
     # Get the raw data open, to know how big things are ...
-    [[lams, data, error],
-     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list['raw_cube'],
+    [[_, data, _],
+     [header0, header_data, _]] = bifus_t.extract_cube(fn_list['raw_cube'],
                                                                   params['inst'])
 
     # Get some info
@@ -1004,12 +1004,12 @@ def run_subtract_continuum(fn_list, params, suffix=None, name_in=None,
         print('-> Subtracting the sky continuum (%s).' % method)
 
     # Get the data open
-    [[lams, data, error],
-     [header0, header_data, header_error]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
+    [[_, data, error],
+     [header0, header_data, _]] = bifus_t.extract_cube(fn_list[name_in], params['inst'])
 
     # Get the skycube open
-    [[skylams, skydata, skyerror],
-     [skyheader0, skyheader_data, skyheader_error]] = bifus_t.extract_cube(fn_list[method+'_cube'],
+    [[_, skydata, _],
+     [_, _, _]] = bifus_t.extract_cube(fn_list[method + '_cube'],
                                                                            params['inst'])
 
     # Since this is a subtraction, and I assume no error on the sky, the errors remain unchanged
