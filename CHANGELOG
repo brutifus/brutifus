@@ -18,12 +18,13 @@ brutifus follows a year.month.release versioning scheme, i.e.: yyyy.mm.v
 
 ## [Unreleased]
 ### Added:
- - [fpavogt, 2021-03-25] Added pylint CI action, CONTRIBUTING guidelines, CODE_OF_CONDUCT.
+ - [fpavogt, 2021-03-25] Add CI Actions for docs (auto-checks and auto-publish).
+ - [fpavogt, 2021-03-25] Add pylint CI action, CONTRIBUTING guidelines, CODE_OF_CONDUCT.
 ### Fixed:
  - [fpavogt, 2021-03-25] General code cleanup using pylint.
  - [fpavogt, 2021-03-24] Cleanup the docs.
 ### Changed:
- - [fpavogt, 2021-03-17] Moved the changelog to a dedicated CHANGELOG file, and added dedicated CI action.
+ - [fpavogt, 2021-03-17] Move the changelog to a dedicated CHANGELOG file, and added dedicated CI action.
 ### Deprecated:
 ### Removed:
 ### Security:
