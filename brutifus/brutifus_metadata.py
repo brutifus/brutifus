@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-#pylint: disable=C0103,W0311
-
 '''
 brutifus: a set of Python modules to process datacubes from integral field spectrographs.\n
-Copyright (C) 2018-2019,  F.P.A. Vogt
+Copyright (C) 2018-2020,  F.P.A. Vogt
+Copyright (C) 2021, F.P.A. Vogt & J. Suherli
+All the contributors are listed in AUTHORS.
 
-----------------------------------------------------------------------------------------------------
+Distributed under the terms of the GNU General Public License v3.0 or later.
+
+SPDX-License-Identifier: GPL-3.0-or-later
 
 This file contains some global metadata used throughout the brutifus code.
 
@@ -31,17 +33,16 @@ tmp_loc = 'brutifus_tmp'
 
 
 def get_fn_list_fn(target):
-   ''' Returns the filename of the storage pickle for all the filenames used by the code
+    ''' Returns the filename of the storage pickle for all the filenames used by the code.
 
-      :param target: name of the target/object to be processed
-      :type target: string
+    Args:
+        target (str): name of the target/object to be processed.
 
+    Returns:
+        str: the pickled dictionnary filename.
+    '''
 
-      :return: the pickled dictionary filename
-      :rtype: string
-   '''
-
-   return 'bifus_fn-list_%s.pkl' % (target) # Name of the dictionary for filenames
+    return 'bifus_fn-list_%s.pkl' % (target) # Name of the dictionary for filenames
 
 # ---| Plotting parameters |------------------------------------------------------------------------
 
@@ -62,4 +63,3 @@ ffmt = {'MUSE': {'data':1, 'var':2, 'badpix':None,
         'WiFeS':{'data':0, 'error':1, 'badpix':2,
                  'funit':r'F$_\lambda$ [erg s$^{-1}$ cm$^{-2}$ \AA$^{-1}$]'},
        }
-      

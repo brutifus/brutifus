@@ -1,0 +1,15 @@
+# The brutifus .pylintrc, fine-tuning the behavior of pylint for the package.
+
+[TYPECHECK]
+
+# List of members which are set dynamically and missed by pylint inference
+# system, and so shouldn't trigger E1101 when accessed. Python regular
+# expressions are accepted.
+generated-members=u.*,  # astropy.units
+
+[BASIC]
+
+# Good variable names which should always be accepted, separated by a comma.
+good-names= _, a, a1, a2, a3, Ab, ab, Av, av, ax, b, c, c1, c2, c3, c4, cb, d, D, Dl, dx, dy,
+    f, fa, fb, F, Fl, fn, gs, i, im, it, j, k, ke, ls, m, nx, ny, p, pa, r, ra, rv, t, u, v, w,
+    x, x0, xc, xs, yc, y, z
