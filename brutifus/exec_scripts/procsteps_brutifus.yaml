@@ -65,7 +65,7 @@
    args:
       name_in: 'skysub_cube'
       name_out: 'galdered_cube'
-      do_plot: True
+      #do_plot: True
       
    
 # === Continuum fitting ===
@@ -84,7 +84,7 @@
    run: False
    suffix: 's06'
    args:
-      method:'lowess'
+      method: 'lowess'
 
 
 # Subtract the sky continuum
